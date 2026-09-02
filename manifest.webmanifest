@@ -1,0 +1,44 @@
+{
+  "name": "두레 전교 시보 · 전자시계 HUD",
+  "short_name": "두레 시보",
+  "description": "교실·방송실용 전자시계 HUD. 시정표, 교시 종소리, 전교 시보 예약 방송, 타이머·스톱워치를 인터넷 없이 사용할 수 있습니다.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "fullscreen"],
+  "orientation": "any",
+  "background_color": "#070c14",
+  "theme_color": "#0a1018",
+  "categories": ["education", "utilities", "productivity"],
+  "icons": [
+    { "src": "./assets/icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "./assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "타이머 5분",
+      "short_name": "5분 타이머",
+      "url": "./index.html?mode=timer&sec=300",
+      "icons": [{ "src": "./assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "스톱워치",
+      "short_name": "스톱워치",
+      "url": "./index.html?mode=watch",
+      "icons": [{ "src": "./assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "시계 크게 보기",
+      "short_name": "큰 시계",
+      "url": "./index.html?fill=1",
+      "icons": [{ "src": "./assets/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

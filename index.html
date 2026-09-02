@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>두레 전교 시보 · 전자시계 HUD</title>
+<meta name="description" content="교실·방송실용 전자시계 HUD. 시정표, 교시 종소리, 전교 시보 예약 방송, 타이머·스톱워치를 인터넷 없이 사용할 수 있습니다.">
+<meta name="theme-color" content="#0a1018">
+<meta name="color-scheme" content="dark light">
+<meta name="format-detection" content="telephone=no">
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./assets/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg">
+<link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="두레 시보">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- 오픈그래프 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="두레 전교 시보 · 전자시계 HUD">
+<meta property="og:description" content="시정표·교시 종소리·전교 시보 예약 방송을 오프라인에서도 쓰는 교실 전자시계 웹앱">
+<meta property="og:image" content="./assets/icons/og-image.png">
+
+<!-- 폰트: 저장소에 함께 들어 있어 인터넷 없이도 그대로 표시됩니다 -->
+<link rel="stylesheet" href="./assets/fonts/pretendard.css">
+<style>
+:root{
+  --neon:#34e5ff; --neon-rgb:52,229,255; --clock-text:#ffffff; --info-text:#dbe8f5;
+  --muted:#9fb6cd; --panel-bg:rgba(9,13,20,0.94); --card-line:rgba(255,255,255,0.10);
+  --readable:0; --scale:1; --digit:104px;
+  --font:"Pretendard","Pretendard Variable","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;}
+body{font-family:var(--font); background:transparent; color:var(--clock-text); overflow:hidden; user-select:none; -webkit-font-smoothing:antialiased;}
+#bgLayer{position:fixed; inset:0; z-index:-2; background:transparent; transition:opacity .3s;}
+
+#widget{position:fixed; top:60px; left:60px; transform-origin:top left; transform:scale(var(--scale)); padding:16px 22px 14px; border-radius:24px;
+  background:rgba(10,15,24, calc(0.6 * var(--readable))); border:1px solid rgba(255,255,255, calc(0.09 * var(--readable)));
+  box-shadow:0 22px 60px rgba(0,0,0, calc(0.5 * var(--readable))); backdrop-filter:blur(calc(10px * var(--readable)));
+  transition:background .25s, border-color .25s, box-shadow .25s; touch-action:none;}
+.grip{position:absolute; top:0; left:0; right:0; height:18px; cursor:grab; border-radius:24px 24px 0 0;}
+.grip:active{cursor:grabbing;}
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; opacity:1; transition:opacity .5s;}
+#widget.idle .topbar,#widget.idle .announce,#widget.idle .controls,#widget.idle .resize{opacity:0; pointer-events:none;}
+.modes{display:flex; gap:4px; padding:4px; border-radius:14px; background:rgba(20,28,40,0.55); border:1px solid var(--card-line);}
+.modes button{font-family:var(--font); font-size:13px; font-weight:700; letter-spacing:-.2px; color:var(--muted); background:transparent; border:none; cursor:pointer; padding:7px 13px; border-radius:10px; transition:.16s;}
+.modes button:hover{color:#fff;}
+.modes button.on{color:#04121a; background:var(--neon); box-shadow:0 0 16px rgba(var(--neon-rgb),.55);}
+.tools{display:flex; gap:8px;}
+.iconbtn{width:34px; height:34px; border-radius:11px; cursor:pointer; display:grid; place-items:center; color:var(--muted); background:rgba(20,28,40,0.5); border:1px solid var(--card-line); transition:.16s;}
+.iconbtn:hover{color:#fff; border-color:var(--neon); box-shadow:0 0 14px rgba(var(--neon-rgb),.25);}
+.iconbtn svg{width:17px; height:17px;}
+.infoline{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; min-height:20px;}
+.infoline .date{font-size:14px; font-weight:700; color:var(--info-text); letter-spacing:-.2px; text-shadow:0 1px 3px rgba(0,0,0,.7);}
+.pill{font-size:12.5px; font-weight:800; letter-spacing:-.2px; padding:4px 11px; border-radius:999px; color:var(--neon); border:1px solid rgba(var(--neon-rgb),.45); background:rgba(var(--neon-rgb),.12); text-shadow:0 0 10px rgba(var(--neon-rgb),.5);}
+.pill.move{color:#c9a6ff; border-color:rgba(185,140,255,.5); background:rgba(185,140,255,.14); text-shadow:0 0 10px rgba(185,140,255,.55);}
+.pill.rest{color:#7ff0c0; border-color:rgba(127,240,192,.45); background:rgba(127,240,192,.12); text-shadow:0 0 10px rgba(127,240,192,.45);}
+.subject{font-size:15px; font-weight:800; color:var(--clock-text); letter-spacing:-.3px; text-shadow:0 1px 4px rgba(0,0,0,.75);}
+.remain{font-size:12.5px; color:var(--info-text); font-variant-numeric:tabular-nums; text-shadow:0 1px 3px rgba(0,0,0,.7);}
+.remain b{color:var(--neon); font-weight:800;}
+.clock{display:flex; align-items:baseline; justify-content:center; line-height:1; padding:4px 2px 6px;}
+.t-main{font-size:var(--digit); font-weight:800; letter-spacing:-2px; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; color:var(--clock-text);
+  text-shadow:0 0 3px rgba(0,0,0,.95),0 3px 8px rgba(0,0,0,.55),0 0 16px rgba(var(--neon-rgb),.65),0 0 40px rgba(var(--neon-rgb),.38);}
+.t-sub{font-size:calc(var(--digit) * .46); font-weight:800; letter-spacing:-1px; font-variant-numeric:tabular-nums; margin-left:6px; color:var(--clock-text);
+  text-shadow:0 0 3px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.5),0 0 12px rgba(var(--neon-rgb),.6);}
+.cln{font-style:normal; animation:blink 1.1s steps(1) infinite; color:var(--neon); text-shadow:0 0 3px rgba(0,0,0,.9),0 0 14px rgba(var(--neon-rgb),.7);}
+.dot{font-style:normal;}
+@keyframes blink{50%{opacity:.32;}}
+.controls{margin-top:12px; opacity:1; transition:opacity .5s;}
+.row{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;}
+.btn{font-family:var(--font); font-size:13.5px; font-weight:700; letter-spacing:-.2px; color:#eef6ff; background:rgba(20,28,40,0.55); border:1px solid var(--card-line); border-radius:12px; cursor:pointer; padding:9px 15px; transition:.15s;}
+.btn:hover{border-color:var(--neon); box-shadow:0 0 14px rgba(var(--neon-rgb),.22);}
+.btn.primary{color:#04121a; background:var(--neon); border-color:transparent; box-shadow:0 0 18px rgba(var(--neon-rgb),.5);}
+.btn.ghost{background:transparent;}
+.btn.sm{padding:6px 11px; font-size:12.5px;}
+.btn.mini{padding:4px 9px; font-size:11.5px; border-radius:9px;}
+.presets{display:flex; gap:6px; justify-content:center; margin-top:9px; flex-wrap:wrap;}
+.presets .btn{padding:6px 12px; font-size:12.5px;}
+.announce{margin-top:14px; transition:opacity .5s;}
+.announce .row{gap:7px;}
+.announce .btn{font-size:12.5px; padding:8px 12px; color:#d3bcff; border-color:rgba(185,140,255,.34); background:rgba(185,140,255,.10);}
+.announce .btn:hover{box-shadow:0 0 14px rgba(185,140,255,.3); border-color:#b98cff;}
+.resize{position:absolute; right:6px; bottom:6px; width:20px; height:20px; cursor:nwse-resize; opacity:0; transition:opacity .4s;}
+#widget:not(.idle) .resize{opacity:.5;}
+.resize::after{content:""; position:absolute; right:3px; bottom:3px; width:9px; height:9px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); border-radius:0 0 3px 0;}
+#widget.alarm .t-main{animation:alarmText .6s steps(1) infinite;}
+@keyframes alarmText{50%{color:var(--neon); text-shadow:0 0 8px #fff,0 0 30px rgba(var(--neon-rgb),.9);}}
+
+#broadcastBar{position:fixed; top:14px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:9px 16px; border-radius:16px; background:rgba(9,13,20,.94); border:1px solid var(--card-line); box-shadow:0 10px 30px rgba(0,0,0,.55); z-index:60; backdrop-filter:blur(12px);}
+#broadcastBar.show{display:flex;}
+#broadcastBar .dotpulse{width:9px; height:9px; border-radius:50%; background:var(--neon); box-shadow:0 0 10px var(--neon); animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{50%{opacity:.3;}}
+#broadcastBar .bcname{font-size:13.5px; color:#fff; font-weight:700; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:40; opacity:0; pointer-events:none; transition:.3s;}
+.overlay.show{opacity:1; pointer-events:auto;}
+.panel{position:fixed; top:0; right:0; height:100%; width:378px; max-width:94vw; background:var(--panel-bg); backdrop-filter:blur(18px); border-left:1px solid rgba(255,255,255,.08); transform:translateX(105%); transition:transform .32s cubic-bezier(.5,.1,.2,1); z-index:50; overflow-y:auto; padding:22px 20px 46px;}
+.panel.open{transform:translateX(0);}
+.panel h2{font-size:16px; font-weight:800; letter-spacing:-.3px;}
+.panel .sub{font-size:12px; color:var(--muted); margin:4px 0 18px;}
+.section{margin-bottom:22px;}
+.section > .label{font-size:12px; font-weight:800; color:var(--neon); letter-spacing:.4px; text-transform:uppercase; margin-bottom:10px; display:block;}
+.field{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.05);}
+.field:last-child{border-bottom:none;}
+.field .name{font-size:13.5px; color:#fff; font-weight:600;}
+.hint{font-size:11.5px; color:var(--muted); line-height:1.6;}
+.field .hint{font-size:11px; color:var(--muted); margin-top:2px; line-height:1.5;}
+.field .val{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+input[type="text"],input[type="time"],input[type="number"],select{font-family:var(--font); font-size:13px; color:#fff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:7px 9px; outline:none;}
+input:focus,select:focus{border-color:var(--neon);}
+input[type="color"]{width:34px; height:28px; border:1px solid rgba(255,255,255,.15); border-radius:8px; background:transparent; cursor:pointer; padding:2px;}
+input[type="range"]{width:130px; accent-color:var(--neon);}
+.switch{position:relative; width:44px; height:25px; cursor:pointer; flex:0 0 auto;}
+.switch input{display:none;}
+.switch .track{position:absolute; inset:0; border-radius:999px; background:rgba(255,255,255,.14); transition:.2s;}
+.switch .knob{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#cdd8e6; transition:.2s;}
+.switch input:checked + .track{background:var(--neon); box-shadow:0 0 12px rgba(var(--neon-rgb),.5);}
+.switch input:checked + .track .knob{transform:translateX(19px); background:#04121a;}
+.presetrow{display:flex; gap:7px; flex-wrap:wrap; margin:4px 0 12px;}
+.swatch{width:28px; height:28px; border-radius:9px; cursor:pointer; border:2px solid rgba(255,255,255,.18); transition:.15s;}
+.swatch:hover{transform:scale(1.08); border-color:#fff;}
+.wdtabs{display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap;}
+.wdtabs button{flex:1; font-family:var(--font); font-size:12.5px; font-weight:700; color:var(--muted); background:rgba(255,255,255,.05); border:1px solid var(--card-line); border-radius:9px; padding:7px 0; cursor:pointer; transition:.15s; min-width:38px;}
+.wdtabs button.on{color:#04121a; background:var(--neon);}
+.ttrow{display:grid; grid-template-columns:52px 1fr 46px; gap:8px; align-items:center; padding:6px 0;}
+.ttrow .plabel{font-size:12px; color:var(--muted); font-weight:700;}
+.ttrow input[type="text"]{width:100%;}
+.ttrow .mv{display:flex; align-items:center; gap:4px; justify-content:center;}
+.ttrow .mv label{font-size:10.5px; color:var(--muted);}
+.timerow{display:grid; grid-template-columns:1fr 74px 74px 30px; gap:6px; align-items:center; padding:5px 0;}
+.timerow input[type="time"]{padding:5px 4px;}
+.timerow select{padding:5px 4px; font-size:12px;}
+.bphead{display:grid; grid-template-columns:46px 1fr 1fr; gap:6px; font-size:10.5px; color:var(--muted); padding:2px 0 4px;}
+.bprow{display:grid; grid-template-columns:46px 1fr 1fr; gap:6px; align-items:center; padding:3px 0;}
+.bprow .plabel{font-size:12px; color:var(--muted); font-weight:700;}
+.bprow select{font-size:11.5px; padding:5px 4px; width:100%;}
+.linkbtn{font-size:13px; color:var(--neon); background:none; border:none; cursor:pointer; font-family:var(--font); font-weight:700; padding:4px 2px;}
+.ann-edit{display:flex; flex-direction:column; gap:6px; margin-bottom:12px;}
+.ann-edit input{width:100%;}
+.sitem{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12.5px; color:#fff;}
+.sitem .sname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sitem .ssize{font-size:10.5px; color:var(--muted);}
+.titem{display:flex; gap:6px; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; color:#fff;}
+.titem .tname{flex:1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.subhead{font-size:11px; color:var(--muted); margin:10px 0 2px; border-top:1px solid rgba(255,255,255,.05); padding-top:10px;}
+.cue{border:1px solid var(--card-line); border-radius:12px; padding:11px; margin-top:8px; background:rgba(255,255,255,.03);}
+.cuetop{display:grid; grid-template-columns:auto 1fr 84px 24px; gap:8px; align-items:center;}
+.cuetop input[type="text"]{width:100%;}
+.daychips{display:flex; gap:4px; margin:9px 0;}
+.daychip{width:26px; height:26px; border-radius:7px; font-size:11px; font-weight:700; border:1px solid var(--card-line); background:rgba(255,255,255,.05); color:var(--muted); cursor:pointer;}
+.daychip.on{background:var(--neon); color:#04121a; border-color:transparent;}
+.cueseq{display:flex; flex-direction:column; gap:6px;}
+.seqitem{display:grid; grid-template-columns:18px 1fr 24px; gap:6px; align-items:center;}
+.seqitem .idx{font-size:11px; color:var(--muted); text-align:center;}
+.seqitem select{width:100%; font-size:12px; padding:5px 4px;}
+.cueactions{display:flex; gap:6px; margin-top:8px;}
+.imgprev{width:100%; height:70px; border-radius:10px; background:center/cover no-repeat; border:1px solid rgba(255,255,255,.12); margin-top:8px; display:none;}
+.footer-note{font-size:11px; color:var(--muted); line-height:1.6; margin-top:8px;}
+.warn{font-size:11.5px; color:#ffcf70; background:rgba(255,180,60,.1); border:1px solid rgba(255,180,60,.25); border-radius:9px; padding:8px 10px; line-height:1.5; margin-top:8px;}
+.danger{color:#ff8a8a;}
+.hidden-file{display:none;}
+@media (prefers-reduced-motion: reduce){.cln,.dotpulse{animation:none;} #widget.alarm .t-main{animation:none;}}
+
+/* ===== PWA 안내 배너 · 토스트 ===== */
+.toast{position:fixed; left:50%; bottom:22px; transform:translate(-50%,140%); z-index:120; display:flex; align-items:center; gap:12px;
+  max-width:min(520px,92vw); padding:12px 14px 12px 16px; border-radius:16px; background:rgba(9,13,20,.96); color:#eaf4ff;
+  border:1px solid var(--card-line); box-shadow:0 18px 46px rgba(0,0,0,.6); backdrop-filter:blur(14px);
+  font-size:13px; line-height:1.5; letter-spacing:-.2px; opacity:0; pointer-events:none; transition:transform .38s cubic-bezier(.2,.9,.25,1), opacity .28s;}
+.toast.show{transform:translate(-50%,0); opacity:1; pointer-events:auto;}
+.toast .ico{width:34px; height:34px; flex:0 0 34px; border-radius:11px; display:grid; place-items:center; font-size:17px;
+  background:rgba(var(--neon-rgb),.14); border:1px solid rgba(var(--neon-rgb),.4);}
+.toast .txt{flex:1; min-width:0;}
+.toast .txt b{display:block; font-weight:800; font-size:13.5px; color:#fff; margin-bottom:2px;}
+.toast .txt span{color:var(--muted); font-size:12px;}
+.toast .acts{display:flex; gap:6px; flex-shrink:0;}
+.toast .btn{padding:7px 12px; font-size:12.5px;}
+.toast.ok .ico{background:rgba(80,240,180,.14); border-color:rgba(80,240,180,.4);}
+
+#netPill{position:fixed; top:14px; right:14px; z-index:70; display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+  font-size:12px; font-weight:800; letter-spacing:-.2px; color:#ffcf70; background:rgba(255,180,60,.12); border:1px solid rgba(255,180,60,.32);
+  backdrop-filter:blur(10px);}
+#netPill.show{display:flex;}
+#netPill i{width:7px; height:7px; border-radius:50%; background:#ffcf70; font-style:normal;}
+
+.appstat{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 10px;}
+.chip{font-size:11.5px; font-weight:800; letter-spacing:-.2px; padding:5px 10px; border-radius:999px;
+  color:var(--muted); background:rgba(255,255,255,.05); border:1px solid var(--card-line);}
+.chip.on{color:#7ff0c0; background:rgba(127,240,192,.12); border-color:rgba(127,240,192,.35);}
+.chip.off{color:#ffcf70; background:rgba(255,180,60,.1); border-color:rgba(255,180,60,.3);}
+.progwrap{height:6px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:8px; display:none;}
+.progwrap.show{display:block;}
+.progbar{height:100%; width:0%; border-radius:99px; background:var(--neon); box-shadow:0 0 12px rgba(var(--neon-rgb),.6); transition:width .2s;}
+</style>
+</head>
+<body>
+<div id="bgLayer"></div>
+
+<div id="broadcastBar"><span class="dotpulse"></span><span class="bcname" id="bcName">방송 재생 중…</span><button class="btn sm" id="bcStop">⏹ 정지</button></div>
+
+<div id="netPill"><i></i><span>오프라인 · 저장된 앱으로 동작 중</span></div>
+
+<div class="toast" id="installToast">
+  <div class="ico">📲</div>
+  <div class="txt"><b>앱으로 설치하기</b><span>바탕화면 아이콘으로 열면 주소창 없이 전체 화면으로 쓸 수 있어요.</span></div>
+  <div class="acts">
+    <button class="btn primary sm" id="installGo">설치</button>
+    <button class="btn ghost sm" id="installNo">나중에</button>
+  </div>
+</div>
+
+<div class="toast" id="updateToast">
+  <div class="ico">✨</div>
+  <div class="txt"><b>새 버전이 준비됐어요</b><span>지금 새로고침하면 바로 적용됩니다. 설정과 음원은 그대로 유지돼요.</span></div>
+  <div class="acts">
+    <button class="btn primary sm" id="updateGo">새로고침</button>
+    <button class="btn ghost sm" id="updateNo">나중에</button>
+  </div>
+</div>
+
+<div class="toast ok" id="readyToast">
+  <div class="ico">✅</div>
+  <div class="txt"><b>오프라인 준비 완료</b><span>이제 인터넷이 끊겨도 이 앱은 그대로 열립니다.</span></div>
+  <div class="acts"><button class="btn ghost sm" id="readyNo">확인</button></div>
+</div>
+
+<div id="widget">
+  <div class="grip" id="grip"></div>
+  <div class="topbar">
+    <div class="modes">
+      <button data-mode="clock" class="on">시정표</button>
+      <button data-mode="timer">타이머</button>
+      <button data-mode="watch">스톱워치</button>
+    </div>
+    <div class="tools">
+      <div class="iconbtn" id="pinBtn" title="컨트롤 항상 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7z"/></svg></div>
+      <div class="iconbtn" id="gearBtn" title="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.3 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h5l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6a7 7 0 0 0 .1-1z"/></svg></div>
+    </div>
+  </div>
+  <div class="infoline" id="infoline">
+    <span class="date" id="dateText">—</span>
+    <span class="pill" id="statusPill">—</span>
+    <span class="subject" id="subjectText"></span>
+    <span class="remain" id="remainText"></span>
+  </div>
+  <div class="clock" id="clock"><span class="t-main" id="tMain">00:00</span><span class="t-sub" id="tSub"></span></div>
+  <div class="controls" id="controls"></div>
+  <div class="announce" id="announce"><div class="row" id="announceRow"></div></div>
+  <div class="resize" id="resize"></div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="panel" id="panel">
+  <h2>설정</h2>
+  <div class="sub">우리 반·전교 시보 상황에 맞게 바꿔 보세요. 설정은 이 브라우저(PC)에 저장됩니다.</div>
+
+  <div class="section">
+    <span class="label">앱 · 오프라인</span>
+    <div class="appstat" id="appStat"></div>
+    <div class="field"><div><div class="name">앱으로 설치</div><div class="hint">바탕화면·작업표시줄에서 바로 실행</div></div>
+      <button class="btn sm primary" id="installBtn">설치하기</button></div>
+    <div class="field"><div><div class="name">화면 꺼짐 방지</div><div class="hint">수업 중 절전 모드로 화면이 꺼지지 않게 유지</div></div>
+      <label class="switch"><input type="checkbox" id="wakeTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div><div class="name">오프라인 자료 다시 받기</div><div class="hint">글꼴·아이콘을 다시 저장해 오프라인 동작을 보강</div></div>
+      <button class="btn sm" id="recacheBtn">다시 받기</button></div>
+    <div class="field" style="border:none;"><div><div class="name">업데이트 확인</div><div class="hint" id="verHint">버전 확인 중…</div></div>
+      <button class="btn sm" id="updateCheck">확인</button></div>
+    <div class="footer-note">📶 인터넷이 없어도 시계·시정표·종소리·타이머가 모두 동작합니다. 저장해 둔 음원도 그대로 재생돼요.</div>
+  </div>
+
+  <div class="section">
+    <span class="label">전체 백업 · 복원</span>
+    <div class="hint" style="margin-bottom:8px;">설정과 <b>음원 파일까지 통째로</b> 하나의 파일로 저장합니다. 다른 PC(방송실·교실)에 그대로 옮길 때 쓰세요.</div>
+    <div class="field" style="border:none; padding-bottom:6px;">
+      <div><div class="name">전체 백업 파일 만들기</div><div class="hint" id="backupHint">음원 포함 · 용량이 클 수 있어요</div></div>
+      <button class="btn sm primary" id="fullBackup">내보내기</button></div>
+    <div class="progwrap" id="backupProg"><div class="progbar" id="backupBar"></div></div>
+    <div class="field" style="border:none;"><div><div class="name">백업 파일에서 복원</div><div class="hint">현재 설정과 음원을 덮어씁니다</div></div>
+      <button class="btn sm" id="fullRestoreBtn">불러오기</button></div>
+    <div class="progwrap" id="restoreProg"><div class="progbar" id="restoreBar"></div></div>
+    <input type="file" id="fullRestoreInput" class="hidden-file" accept=".dhudbak,.json,application/json">
+  </div>
+
+  <div class="section">
+    <span class="label">화면 · 표시</span>
+    <div class="field"><div class="name">가독성 배경판</div><label class="switch"><input type="checkbox" id="readableTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">위젯 크기</div><div class="val"><input type="range" id="scaleRange" min="0.5" max="6" step="0.05"><span id="scaleVal" class="remain">100%</span></div></div>
+    <div class="field"><div class="name">화면 꽉 채우기</div><div class="val"><button class="btn sm" id="fillScreen">시계 크게</button></div></div>
+    <div class="field"><div class="name">초 표시</div><label class="switch"><input type="checkbox" id="secTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">24시간제</div><label class="switch"><input type="checkbox" id="h24Tgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">위치 초기화</div><button class="btn sm" id="resetPos">좌상단으로</button></div>
+  </div>
+
+  <div class="section">
+    <span class="label">UI 색상</span>
+    <div class="hint" style="margin-bottom:2px;">빠른 색 프리셋</div>
+    <div class="presetrow" id="palettes"></div>
+    <div class="field"><div class="name">강조색(네온)</div><div class="val"><input type="color" id="accentColor"></div></div>
+    <div class="field"><div class="name">시계 글자색</div><div class="val"><input type="color" id="clockColor"></div></div>
+    <div class="field"><div class="name">정보 글자색</div><div class="val"><input type="color" id="infoColor"></div></div>
+  </div>
+
+  <div class="section">
+    <span class="label">배경</span>
+    <div class="field"><div><div class="name">배경 종류</div><div class="hint">투명은 영상·PPT 위에, 크로마키는 OBS 합성용</div></div>
+      <div class="val"><select id="bgMode"><option value="transparent">투명</option><option value="solid">단색</option><option value="gradient">그라데이션</option><option value="image">이미지</option><option value="dark">어두움</option><option value="green">크로마키 그린</option><option value="blue">크로마키 블루</option></select></div></div>
+    <div class="field" id="bgColor1Row"><div class="name">배경색 1</div><div class="val"><input type="color" id="bgColor1"></div></div>
+    <div class="field" id="bgColor2Row"><div class="name">배경색 2</div><div class="val"><input type="color" id="bgColor2"></div></div>
+    <div class="field" id="bgImageRow"><div class="name">배경 이미지</div><div class="val"><button class="btn mini" id="bgImageBtn">파일 선택</button><button class="btn mini ghost" id="bgImageClear">지우기</button></div></div>
+    <div class="imgprev" id="bgImagePrev"></div>
+    <div class="field"><div class="name">불투명도</div><div class="val"><input type="range" id="bgOpacity" min="0" max="1" step="0.05"></div></div>
+    <input type="file" id="bgImageInput" class="hidden-file" accept="image/*">
+  </div>
+
+  <div class="section">
+    <span class="label">음원 보관함</span>
+    <div class="hint" style="margin-bottom:8px;">직접 편집한 벨소리·기상송·녹음 방송을 원하는 만큼 넣으세요. 대용량(수십 MB)도 이 PC에 저장됩니다.</div>
+    <div id="idbWarn"></div>
+    <button class="btn sm" id="addSound">+ 음원 파일 추가</button>
+    <input type="file" id="soundInput" class="hidden-file" accept="audio/*" multiple>
+    <div id="soundList" style="margin-top:6px;"></div>
+    <div class="field" style="margin-top:8px;"><div class="name">전체 볼륨</div><div class="val"><input type="range" id="volRange" min="0" max="1" step="0.05"></div></div>
+    <div class="field"><div class="name">타이머 종료음</div><div class="val"><select id="timerSoundSel"></select><button class="btn mini" id="timerSoundTest">듣기</button></div></div>
+  </div>
+
+  <div class="section">
+    <span class="label">전교 시보 · 방송 스케줄</span>
+    <div class="hint" style="margin-bottom:8px;">정해진 시각에 음원을 순서대로 재생합니다. 예) 기상송 → 아침 녹음 방송 이어서 재생.</div>
+    <button class="btn sm" id="addCue">+ 시보 추가</button>
+    <div id="cueList" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="section">
+    <span class="label">교시 종소리 (교실용)</span>
+    <div class="field"><div><div class="name">교시 자동 종소리</div><div class="hint">시정표의 수업 시작·끝에 자동 재생</div></div>
+      <label class="switch"><input type="checkbox" id="bellAutoTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">기본 시작종</div><div class="val"><select id="bellStartSel"></select><button class="btn mini" id="bellStartTest">듣기</button></div></div>
+    <div class="field"><div class="name">기본 끝종</div><div class="val"><select id="bellEndSel"></select><button class="btn mini" id="bellEndTest">듣기</button></div></div>
+    <div class="subhead">교시별 종소리 (미지정 시 위 기본 종소리 사용 · 업로드 파일도 선택 가능)</div>
+    <div id="bellPerPeriod"></div>
+    <div class="field" style="border-top:1px solid rgba(255,255,255,.06); margin-top:6px; padding-top:12px;"><div><div class="name">점심 예비종</div><div class="hint">점심 시작 몇 분 전에 알림</div></div>
+      <label class="switch"><input type="checkbox" id="prepLunchTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">몇 분 전 · 음원</div><div class="val"><input type="number" id="prepLunchMin" min="1" max="30" style="width:52px;"><span class="remain">분</span><select id="prepLunchSound"></select><button class="btn mini" id="prepLunchTest">듣기</button></div></div>
+    <div class="field" style="border-top:1px solid rgba(255,255,255,.06); margin-top:6px; padding-top:12px;"><div><div class="name">저녁 예비종</div><div class="hint">지정한 저녁 시각 몇 분 전에 알림 (매일)</div></div>
+      <label class="switch"><input type="checkbox" id="prepEveTgl"><span class="track"><span class="knob"></span></span></label></div>
+    <div class="field"><div class="name">저녁 시각</div><div class="val"><input type="time" id="prepEveTime"></div></div>
+    <div class="field"><div class="name">몇 분 전 · 음원</div><div class="val"><input type="number" id="prepEveMin" min="1" max="60" style="width:52px;"><span class="remain">분</span><select id="prepEveSound"></select><button class="btn mini" id="prepEveTest">듣기</button></div></div>
+  </div>
+
+  <div class="section">
+    <span class="label">시정표 · 시간표</span>
+    <div class="subhead" style="border:none; padding-top:0;">시간표 자동 생성 (러닝타임만 정하면 자동 배치)</div>
+    <div class="field"><div class="name">첫 교시 시작</div><div class="val"><input type="time" id="atStart" style="width:112px;"></div></div>
+    <div class="field"><div class="name">수업 시간(분)</div><div class="val"><input type="number" id="atClass" min="10" max="120" style="width:66px;"></div></div>
+    <div class="field"><div class="name">쉬는시간(분)</div><div class="val"><input type="number" id="atBreak" min="0" max="60" style="width:66px;"></div></div>
+    <div class="field"><div class="name">교시 수</div><div class="val"><input type="number" id="atPeriods" min="1" max="14" style="width:66px;"></div></div>
+    <div class="field"><div class="name">점심 위치</div><div class="val"><select id="atLunchAfter"></select></div></div>
+    <div class="field"><div class="name">점심 시간(분)</div><div class="val"><input type="number" id="atLunchMin" min="0" max="120" style="width:66px;"></div></div>
+    <div class="field" style="border:none;"><div class="hint" style="max-width:180px;">예: 45분 수업·10분 쉬는시간·8교시, 4교시 후 60분 점심</div><button class="btn sm primary" id="atGen">자동 배치</button></div>
+    <div class="subhead">과목 편집 (요일별)</div>
+    <div class="wdtabs" id="wdtabs"></div>
+    <div id="subjectEditor"></div>
+    <div class="field" style="border:none; margin-top:12px; padding-bottom:4px;"><div><div class="name">교시 시간</div><div class="hint">시작·끝 시각과 구분(수업/쉬는시간/점심)</div></div>
+      <button class="linkbtn" id="addSlot">+ 칸</button></div>
+    <div id="slotEditor"></div>
+  </div>
+
+  <div class="section">
+    <span class="label">선생님 안내 버튼</span>
+    <div class="hint" style="margin-bottom:10px;">버튼 이름과 안내 문구를 바꿀 수 있어요.</div>
+    <div id="annEditor"></div>
+  </div>
+
+  <div class="section">
+    <span class="label">템플릿</span>
+    <div class="hint" style="margin-bottom:8px;">시간표·색상·배경·종소리 설정을 통째로 저장해 두고 골라 쓸 수 있어요.</div>
+    <div class="field" style="border:none; padding-bottom:6px;">
+      <input type="text" id="tplName" placeholder="템플릿 이름 (예: 3학년 시간표)" style="flex:1;">
+      <button class="btn mini primary" id="tplSave">저장</button></div>
+    <div id="tplList"></div>
+    <div class="field" style="border:none; margin-top:8px;"><div class="name">설정 파일 공유</div>
+      <div class="val"><button class="btn mini" id="tplExport">내보내기</button><button class="btn mini" id="tplImportBtn">불러오기</button></div></div>
+    <div class="hint">※ 내보내기에는 음원 파일(용량 큼)은 포함되지 않습니다. 음원은 이 PC에 저장돼요.</div>
+    <input type="file" id="tplImport" class="hidden-file" accept=".json,.dhud,application/json">
+  </div>
+
+  <div class="section">
+    <button class="btn ghost" id="resetAll"><span class="danger">전체 초기화</span></button>
+    <div class="footer-note">
+      💡 <b>전교 시보로 쓰는 법</b><br>
+      · 방송용 PC에서 <b>Chrome 또는 Edge</b>로 열고 <b>[앱 · 오프라인 → 설치하기]</b>를 눌러 두세요. 주소창 없는 전체 화면으로 실행됩니다.<br>
+      · 한 번 열어 두면 <b>인터넷이 끊겨도</b> 그대로 동작합니다(글꼴·아이콘까지 저장됨).<br>
+      · 브라우저 소리 정책상 <b>화면을 한 번 클릭</b>한 뒤부터 자동 재생됩니다. 아침 부팅 후 한 번 클릭해 두세요.<br>
+      · <b>화면 꺼짐 방지</b>를 켜면 절전 모드로 화면이 꺼지지 않습니다.<br>
+      · 방송이 재생되면 화면 위쪽에 "⏹ 정지" 막대가 떠서 언제든 멈출 수 있습니다.<br>
+      · 창을 닫으면 예약 재생이 멈추니, 시보 PC에서는 창을 계속 열어 두세요.<br>
+      · 다른 PC로 옮길 때는 <b>[전체 백업 · 복원]</b>으로 음원까지 한 번에 옮길 수 있어요.
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const KEY="dure-hud-v3";
+function loadStore(){ try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};} }
+function saveStore(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }catch(e){ return false; } }
+function saveGuard(){ if(!saveStore()) alert("설정 저장 공간이 부족합니다. 배경 이미지 용량을 줄여 주세요."); }
+
+/* ===== IndexedDB (대용량 음원 저장) ===== */
+const DB_NAME="dureHudAudio", STORE="clips";
+let idbOK=false, warnedIDB=false;
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbPut(id,blob){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readwrite"); tx.objectStore(STORE).put(blob,id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+async function idbGet(id){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readonly"); const rq=tx.objectStore(STORE).get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); }); }
+async function idbDel(id){ const db=await idb(); return new Promise((res)=>{ const tx=db.transaction(STORE,"readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>res(); }); }
+function dataURLtoBlob(dataURL){ const [meta,b64]=dataURL.split(","); const mime=(meta.match(/:(.*?);/)||[])[1]||"audio/mpeg"; const bin=atob(b64); const len=bin.length; const arr=new Uint8Array(len); for(let i=0;i<len;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime}); }
+const urlCache={};
+
+const DEFAULT_SLOTS=[
+  {type:"class",no:1,start:"09:00",end:"09:45"},{type:"break",start:"09:45",end:"09:55"},
+  {type:"class",no:2,start:"09:55",end:"10:40"},{type:"break",start:"10:40",end:"10:50"},
+  {type:"class",no:3,start:"10:50",end:"11:35"},{type:"break",start:"11:35",end:"11:45"},
+  {type:"class",no:4,start:"11:45",end:"12:30"},{type:"lunch",start:"12:30",end:"13:30"},
+  {type:"class",no:5,start:"13:30",end:"14:15"},{type:"break",start:"14:15",end:"14:25"},
+  {type:"class",no:6,start:"14:25",end:"15:10"},{type:"break",start:"15:10",end:"15:20"},
+  {type:"class",no:7,start:"15:20",end:"16:05"},
+];
+const DEFAULT_ANN=[
+  {name:"집중해요",msg:"여러분, 앞을 보고 선생님께 집중해 주세요."},
+  {name:"정리 시간",msg:"활동을 정리하고 자기 자리에 앉아 주세요."},
+  {name:"목소리 낮추기",msg:"목소리를 조금만 낮춰 주세요."},
+  {name:"모둠 활동",msg:"모둠끼리 모여서 활동을 시작해 주세요."},
+  {name:"발표 준비",msg:"발표 준비하고 앞으로 나와 주세요."},
+];
+const PALETTES=[
+  {accent:"#34e5ff",clock:"#ffffff"},{accent:"#ff5db1",clock:"#ffffff"},{accent:"#b6ff3c",clock:"#f4ffe4"},{accent:"#ffb02e",clock:"#fff6e6"},
+  {accent:"#b98cff",clock:"#ffffff"},{accent:"#ff6b5e",clock:"#fff0ee"},{accent:"#4ade80",clock:"#eafff2"},{accent:"#ffffff",clock:"#ffffff"},
+];
+
+const S=Object.assign({
+  scale:1, readable:false, showSec:true, h24:true, voice:true, voiceRate:1, sfx:true, volume:0.85,
+  pos:{x:60,y:60}, pin:false, keepAwake:false,
+  slots:JSON.parse(JSON.stringify(DEFAULT_SLOTS)),
+  subjects:{1:{},2:{},3:{},4:{},5:{}},
+  ann:JSON.parse(JSON.stringify(DEFAULT_ANN)),
+  theme:{accent:"#34e5ff", clock:"#ffffff", info:"#dbe8f5"},
+  background:{mode:"dark", color1:"#0a0f18", color2:"#1b2a4a", image:"", opacity:1},
+  sounds:[], timerSound:"beep", bellAuto:false, bellSound:"beep", bellStartDefault:"beep", bellEndDefault:"beep",
+  autoTable:{start:"09:00", classMin:45, breakMin:10, periods:7, lunchAfter:4, lunchMin:60},
+  prepLunch:{on:false, sound:"beep", min:5},
+  prepEvening:{on:false, sound:"beep", time:"18:00", min:5},
+  cues:[{id:"c-morning", label:"아침 기상방송", time:"08:00", days:[1,2,3,4,5], sounds:[], on:false}],
+  templates:[],
+}, loadStore());
+if(!S.subjects) S.subjects={1:{},2:{},3:{},4:{},5:{}};
+if(!S.ann||S.ann.length!==5) S.ann=JSON.parse(JSON.stringify(DEFAULT_ANN));
+if(!S.slots||!S.slots.length) S.slots=JSON.parse(JSON.stringify(DEFAULT_SLOTS));
+if(!S.theme) S.theme={accent:S.neon||"#34e5ff",clock:"#ffffff",info:"#dbe8f5"};
+if(!S.background) S.background={mode:(S.bg||"dark"),color1:"#0a0f18",color2:"#1b2a4a",image:"",opacity:1};
+if(!Array.isArray(S.sounds)) S.sounds=[];
+if(!Array.isArray(S.templates)) S.templates=[];
+if(!Array.isArray(S.cues)) S.cues=[];
+if(!S.bellSound) S.bellSound="beep";
+if(!S.bellStartDefault) S.bellStartDefault=S.bellSound||"beep";
+if(!S.bellEndDefault) S.bellEndDefault=S.bellSound||"beep";
+if(!S.autoTable) S.autoTable={start:"09:00",classMin:45,breakMin:10,periods:7,lunchAfter:4,lunchMin:60};
+if(!S.prepLunch) S.prepLunch={on:false,sound:"beep",min:5};
+if(!S.prepEvening) S.prepEvening={on:false,sound:"beep",time:"18:00",min:5};
+
+const $=s=>document.querySelector(s);
+const widget=$("#widget"), tMain=$("#tMain"), tSub=$("#tSub"), bgLayer=$("#bgLayer");
+let mode="clock";
+
+function hexToRgb(h){const m=(h||"#34e5ff").replace("#","");return [parseInt(m.slice(0,2),16),parseInt(m.slice(2,4),16),parseInt(m.slice(4,6),16)];}
+function applyBackground(){
+  const b=S.background; bgLayer.style.opacity=b.opacity;
+  if(b.mode==="transparent") bgLayer.style.background="transparent";
+  else if(b.mode==="dark") bgLayer.style.background="#0a0f18";
+  else if(b.mode==="green") bgLayer.style.background="#00b140";
+  else if(b.mode==="blue") bgLayer.style.background="#0047bb";
+  else if(b.mode==="solid") bgLayer.style.background=b.color1;
+  else if(b.mode==="gradient") bgLayer.style.background="linear-gradient(135deg, "+b.color1+", "+b.color2+")";
+  else if(b.mode==="image"&&b.image) bgLayer.style.background="url("+b.image+") center/cover no-repeat";
+  else bgLayer.style.background="transparent";
+}
+function applyLook(){
+  const r=document.documentElement.style;
+  r.setProperty("--neon", S.theme.accent);
+  r.setProperty("--neon-rgb", hexToRgb(S.theme.accent).join(","));
+  r.setProperty("--clock-text", S.theme.clock);
+  r.setProperty("--info-text", S.theme.info);
+  r.setProperty("--scale", S.scale);
+  r.setProperty("--readable", S.readable?1:0);
+  widget.style.top=S.pos.y+"px"; widget.style.left=S.pos.x+"px";
+  applyBackground();
+}
+
+let lastMain="", lastSub=null;
+function fmtColon(str){ return str.replace(/:/g,'<i class="cln">:</i>').replace(/\./g,'<i class="dot">.</i>'); }
+function setDigital(main, sub){
+  if(main!==lastMain){ tMain.innerHTML=fmtColon(main); lastMain=main; }
+  if(sub!==lastSub){ if(sub){ tSub.innerHTML=fmtColon(sub); tSub.style.display="inline"; } else { tSub.innerHTML=""; tSub.style.display="none"; } lastSub=sub; }
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+
+const WD=["일","월","화","수","목","금","토"];
+function hm(t){ const [h,m]=t.split(":").map(Number); return h*60+m; }
+function hmSec(t){ const [h,m]=t.split(":").map(Number); return h*3600+m*60; }
+function fmtHM(mins){ mins=((Math.round(mins)%1440)+1440)%1440; return pad(Math.floor(mins/60))+":"+pad(mins%60); }
+function autoBuildSlots(cfg){
+  const start=hm(cfg.start), classMin=Math.max(1,cfg.classMin), breakMin=Math.max(0,cfg.breakMin);
+  const periods=Math.max(1,cfg.periods), lunchAfter=cfg.lunchAfter||0, lunchMin=Math.max(0,cfg.lunchMin);
+  const slots=[]; let cur=start;
+  for(let p=1;p<=periods;p++){
+    slots.push({type:"class",no:p,start:fmtHM(cur),end:fmtHM(cur+classMin)}); cur+=classMin;
+    if(p===periods) break;
+    if(lunchAfter && p===lunchAfter && lunchMin>0){ slots.push({type:"lunch",start:fmtHM(cur),end:fmtHM(cur+lunchMin)}); cur+=lunchMin; }
+    else if(breakMin>0){ slots.push({type:"break",start:fmtHM(cur),end:fmtHM(cur+breakMin)}); cur+=breakMin; }
+  }
+  return slots;
+}
+function computeStatus(now){
+  const wd=now.getDay(), cur=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  const slots=S.slots.slice().sort((a,b)=>hm(a.start)-hm(b.start)); const subj=S.subjects[wd]||{};
+  if(wd===0||wd===6) return {pill:"주말",cls:"rest",subject:"",remainSec:null};
+  if(!slots.length) return {pill:"",cls:"",subject:"",remainSec:null};
+  if(cur<hm(slots[0].start)) return {pill:"등교 전",cls:"",subject:"",remainSec:Math.round((hm(slots[0].start)-cur)*60)};
+  if(cur>=hm(slots[slots.length-1].end)) return {pill:"하교",cls:"",subject:"",remainSec:null};
+  for(let i=0;i<slots.length;i++){
+    const s=slots[i];
+    if(cur>=hm(s.start)&&cur<hm(s.end)){
+      const remain=Math.round((hm(s.end)-cur)*60);
+      if(s.type==="class"){ const info=subj[s.no]||{}; return {pill:s.no+"교시",cls:info.move?"move":"",subject:info.name||"",remainSec:remain}; }
+      if(s.type==="lunch") return {pill:"점심 시간",cls:"rest",subject:"",remainSec:remain};
+      const next=slots.slice(i+1).find(x=>x.type==="class"); const nInfo=next?(subj[next.no]||{}):{};
+      if(nInfo.move) return {pill:"이동 시간",cls:"move",subject:nInfo.name?("→ "+nInfo.name):"",remainSec:remain};
+      return {pill:"쉬는 시간",cls:"rest",subject:"",remainSec:remain};
+    }
+  }
+  return {pill:"",cls:"",subject:"",remainSec:null};
+}
+function fmtRemain(sec){ if(sec==null) return ""; const m=Math.floor(sec/60),s=sec%60; return m+":"+pad(s); }
+
+/* ===== 오디오 ===== */
+let AC=null, audioUnlocked=false;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function unlockAudio(){ if(audioUnlocked) return; audioUnlocked=true; const c=ac(); if(c&&c.state==="suspended") c.resume(); }
+function beep(freq,dur,when,vol){ const c=ac(); if(!c) return; const o=c.createOscillator(),g=c.createGain(); o.type="sine"; o.frequency.value=freq; o.connect(g); g.connect(c.destination); const t=c.currentTime+when; const v=(vol!=null?vol:0.18)*S.volume; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+0.02); }
+function beepChime(){ beep(880,0.12,0); beep(1174,0.14,0.09); }
+function beepAlarm(){ for(let i=0;i<3;i++){ beep(1046,0.16,i*0.28,0.2); beep(784,0.16,i*0.28+0.14,0.2); } }
+function speak(text){ if(!S.voice) return; try{ const u=new SpeechSynthesisUtterance(text); u.lang="ko-KR"; u.rate=S.voiceRate; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }
+function chime(){ if(!S.sfx) return; unlockAudio(); beepChime(); }
+
+/* 순차 재생(방송) 플레이어 */
+let bcQueue=[], curAudio=null, broadcasting=false;
+function updateBC(name){ const bar=$("#broadcastBar"); if(!bar) return; if(broadcasting){ bar.classList.add("show"); $("#bcName").textContent=name||"방송 재생 중…"; } else bar.classList.remove("show"); }
+function stopBroadcast(){ bcQueue=[]; if(curAudio){ curAudio.onended=null; curAudio.onerror=null; try{curAudio.pause();}catch(e){} curAudio=null; } broadcasting=false; updateBC(); }
+function playCue(ids){ unlockAudio(); stopBroadcast(); bcQueue=(ids||[]).filter(x=>x&&x!=="none"); if(!bcQueue.length) return; broadcasting=true; stepBroadcast(); }
+function stepBroadcast(){
+  if(!bcQueue.length){ broadcasting=false; updateBC(); return; }
+  const id=bcQueue.shift();
+  if(id==="beep"){ beepChime(); broadcasting=true; updateBC("알림음"); setTimeout(stepBroadcast,460); return; }
+  const url=urlCache[id]; const s=S.sounds.find(x=>x.id===id);
+  if(!url){ beepChime(); setTimeout(stepBroadcast,460); return; }
+  try{ curAudio=new Audio(url); curAudio.volume=S.volume; curAudio.onended=stepBroadcast; curAudio.onerror=stepBroadcast; broadcasting=true; updateBC(s?s.name:"재생 중"); curAudio.play().catch(()=>setTimeout(stepBroadcast,300)); }
+  catch(e){ setTimeout(stepBroadcast,300); }
+}
+
+/* ===== 타이머 ===== */
+let timer={running:false, remainMs:0, totalMs:5*60*1000, endAt:0, fired:false};
+function timerSet(sec){ timer.totalMs=sec*1000; timer.remainMs=sec*1000; timer.fired=false; timer.running=false; widget.classList.remove("alarm"); }
+function timerStart(){ if(timer.remainMs<=0) timer.remainMs=timer.totalMs; if(timer.remainMs<=0) return; timer.endAt=Date.now()+timer.remainMs; timer.running=true; timer.fired=false; widget.classList.remove("alarm"); }
+function timerPause(){ if(timer.running){ timer.remainMs=Math.max(0,timer.endAt-Date.now()); timer.running=false; } }
+function timerReset(){ timer.running=false; timer.remainMs=timer.totalMs; timer.fired=false; widget.classList.remove("alarm"); }
+function timerAdd(sec){ if(timer.running){ timer.endAt=Math.max(Date.now(),timer.endAt+sec*1000); } else { timer.remainMs=Math.max(0,timer.remainMs+sec*1000); } }
+function timerFinish(){ timer.fired=true; timer.running=false; timer.remainMs=0; widget.classList.add("alarm"); if(S.sfx){ if(S.timerSound==="beep"||!S.timerSound) beepAlarm(); else playCue([S.timerSound]); } speak("시간이 다 되었습니다."); setTimeout(()=>widget.classList.remove("alarm"),6000); }
+
+/* ===== 스톱워치 ===== */
+let watch={running:false, base:0, elapsed:0}, laps=[];
+
+/* ===== 시보/종소리 판정 ===== */
+let lastBellSec=-1;
+function resolveBell(v, which){ if(v==="none") return null; if(!v) return (which==="end"?(S.bellEndDefault||"beep"):(S.bellStartDefault||"beep")); return v; }
+function checkBell(now){
+  const nowSec=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  if(nowSec===lastBellSec) return;
+  const wd=now.getDay();
+  for(const c of S.cues){ if(c.on && (c.days||[]).includes(wd) && nowSec===hmSec(c.time)){ lastBellSec=nowSec; if(S.sfx) playCue((c.sounds||[]).slice()); return; } }
+  if(S.bellAuto && wd>=1 && wd<=5){
+    for(const s of S.slots){
+      if(s.type!=="class") continue;
+      if(nowSec===hmSec(s.start)){ lastBellSec=nowSec; const r=resolveBell(s.bellStart,"start"); if(r&&S.sfx) playCue([r]); return; }
+      if(nowSec===hmSec(s.end)){ lastBellSec=nowSec; const r=resolveBell(s.bellEnd,"end"); if(r&&S.sfx) playCue([r]); return; }
+    }
+  }
+  if(S.prepLunch.on && wd>=1 && wd<=5){ const lunch=S.slots.find(s=>s.type==="lunch"); if(lunch && nowSec===hmSec(lunch.start)-S.prepLunch.min*60){ lastBellSec=nowSec; if(S.sfx) playCue([S.prepLunch.sound||"beep"]); return; } }
+  if(S.prepEvening.on && nowSec===hmSec(S.prepEvening.time)-S.prepEvening.min*60){ lastBellSec=nowSec; if(S.sfx) playCue([S.prepEvening.sound||"beep"]); return; }
+}
+
+/* ===== 루프 ===== */
+let lastFrame=0;
+function loop(ts){ if(ts-lastFrame>40){ render(new Date()); lastFrame=ts; } requestAnimationFrame(loop); }
+function render(now){
+  if(mode==="clock"){
+    $("#infoline").style.display="flex";
+    let h=now.getHours(); if(!S.h24) h=h%12||12;
+    const H=pad(h),M=pad(now.getMinutes()),Sx=pad(now.getSeconds());
+    if(S.showSec) setDigital(H+":"+M, ":"+Sx); else setDigital(H+":"+M, null);
+    const st=computeStatus(now);
+    $("#dateText").textContent=now.getFullYear()+"."+pad(now.getMonth()+1)+"."+pad(now.getDate())+" ("+WD[now.getDay()]+")";
+    const pill=$("#statusPill"); pill.textContent=st.pill; pill.className="pill"+(st.cls?(" "+st.cls):""); pill.style.display=st.pill?"inline-block":"none";
+    $("#subjectText").textContent=st.subject||"";
+    $("#remainText").innerHTML=st.remainSec!=null?("남은 시간 <b>"+fmtRemain(st.remainSec)+"</b>"):"";
+    checkBell(now);
+  } else if(mode==="timer"){
+    $("#infoline").style.display="none";
+    let ms=timer.running?Math.max(0,timer.endAt-Date.now()):timer.remainMs;
+    if(timer.running){ timer.remainMs=ms; if(ms<=0&&!timer.fired) timerFinish(); }
+    const tot=Math.ceil(ms/1000),m=Math.floor(tot/60),s=tot%60; setDigital(pad(m)+":"+pad(s),null);
+  } else if(mode==="watch"){
+    $("#infoline").style.display="none";
+    let e=watch.running?watch.elapsed+(Date.now()-watch.base):watch.elapsed;
+    const cs=Math.floor(e/10)%100,tsec=Math.floor(e/1000),m=Math.floor(tsec/60),s=tsec%60; setDigital(pad(m)+":"+pad(s),"."+pad(cs));
+  }
+}
+
+/* ===== 컨트롤 ===== */
+const controlsEl=$("#controls");
+function renderControls(){
+  if(mode==="clock"){ controlsEl.innerHTML=""; return; }
+  if(mode==="timer"){
+    controlsEl.innerHTML='<div class="row"><button class="btn primary" id="tStart">시작</button><button class="btn" id="tPause">일시정지</button><button class="btn ghost" id="tReset">초기화</button></div><div class="presets"><button class="btn" data-min="0.5">30초</button><button class="btn" data-min="1">1분</button><button class="btn" data-min="3">3분</button><button class="btn" data-min="5">5분</button><button class="btn" data-min="10">10분</button></div><div class="row" style="margin-top:8px;"><button class="btn sm" data-add="60">+1분</button><button class="btn sm" data-add="10">+10초</button><button class="btn sm" data-add="-10">-10초</button></div>';
+    $("#tStart").onclick=()=>{ unlockAudio(); timerStart(); }; $("#tPause").onclick=timerPause; $("#tReset").onclick=timerReset;
+    controlsEl.querySelectorAll("[data-min]").forEach(b=>b.onclick=()=>{ unlockAudio(); timerSet(parseFloat(b.dataset.min)*60); timerStart(); });
+    controlsEl.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>timerAdd(parseInt(b.dataset.add)));
+  } else if(mode==="watch"){
+    controlsEl.innerHTML='<div class="row"><button class="btn primary" id="wStart">'+(watch.running?"정지":"시작")+'</button><button class="btn" id="wLap">랩</button><button class="btn ghost" id="wReset">초기화</button></div><div id="laps" class="footer-note" style="margin-top:10px; max-height:96px; overflow-y:auto;"></div>';
+    const sb=$("#wStart");
+    sb.onclick=()=>{ if(watch.running){ watch.elapsed+=Date.now()-watch.base; watch.running=false; sb.textContent="시작"; } else { watch.base=Date.now(); watch.running=true; sb.textContent="정지"; } };
+    $("#wReset").onclick=()=>{ watch={running:false,base:0,elapsed:0}; laps=[]; sb.textContent="시작"; renderLaps(); };
+    $("#wLap").onclick=()=>{ const e=watch.running?watch.elapsed+(Date.now()-watch.base):watch.elapsed; laps.unshift(e); renderLaps(); };
+    renderLaps();
+  }
+}
+function renderLaps(){ const el=$("#laps"); if(!el) return; el.innerHTML=laps.map((e,i)=>{ const cs=Math.floor(e/10)%100,sec=Math.floor(e/1000),m=Math.floor(sec/60),s=sec%60; return "랩 "+(laps.length-i)+" · "+pad(m)+":"+pad(s)+"."+pad(cs); }).join("<br>"); }
+
+/* ===== 안내 버튼 ===== */
+function renderAnnounce(){ const row=$("#announceRow"); row.innerHTML=""; S.ann.forEach(a=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=a.name; b.onclick=()=>{ chime(); speak(a.msg); }; row.appendChild(b); }); }
+
+/* ===== 모드 전환 ===== */
+document.querySelectorAll(".modes button").forEach(b=>{ b.onclick=()=>{ document.querySelectorAll(".modes button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); mode=b.dataset.mode; lastMain=""; lastSub=null; renderControls(); render(new Date()); }; });
+
+/* ===== 드래그/크기/유휴 ===== */
+(function(){ const grip=$("#grip"); let sx,sy,ox,oy,drag=false;
+  grip.addEventListener("pointerdown",e=>{ drag=true; grip.setPointerCapture(e.pointerId); sx=e.clientX; sy=e.clientY; ox=S.pos.x; oy=S.pos.y; });
+  grip.addEventListener("pointermove",e=>{ if(!drag) return; S.pos.x=Math.max(0,ox+(e.clientX-sx)); S.pos.y=Math.max(0,oy+(e.clientY-sy)); widget.style.left=S.pos.x+"px"; widget.style.top=S.pos.y+"px"; });
+  grip.addEventListener("pointerup",()=>{ if(drag){ drag=false; saveStore(); } });
+})();
+(function(){ const rz=$("#resize"); let sx,sc,drag=false;
+  rz.addEventListener("pointerdown",e=>{ drag=true; rz.setPointerCapture(e.pointerId); sx=e.clientX; sc=S.scale; e.stopPropagation(); });
+  rz.addEventListener("pointermove",e=>{ if(!drag) return; S.scale=Math.min(6,Math.max(0.5,sc+(e.clientX-sx)/220)); document.documentElement.style.setProperty("--scale",S.scale); $("#scaleRange").value=S.scale; $("#scaleVal").textContent=Math.round(S.scale*100)+"%"; });
+  rz.addEventListener("pointerup",()=>{ if(drag){ drag=false; saveStore(); } });
+})();
+let idleT; function activity(){ unlockAudio(); widget.classList.remove("idle"); clearTimeout(idleT); if(!S.pin) idleT=setTimeout(()=>widget.classList.add("idle"),4000); }
+["pointermove","pointerdown"].forEach(ev=>widget.addEventListener(ev,activity));
+document.body.addEventListener("pointerdown",unlockAudio);
+$("#pinBtn").onclick=()=>{ S.pin=!S.pin; $("#pinBtn").style.color=S.pin?S.theme.accent:""; saveStore(); activity(); };
+$("#bcStop").onclick=stopBroadcast;
+
+/* ===== 패널 ===== */
+const panel=$("#panel"), overlay=$("#overlay");
+$("#gearBtn").onclick=()=>{ panel.classList.add("open"); overlay.classList.add("show"); };
+overlay.onclick=()=>{ panel.classList.remove("open"); overlay.classList.remove("show"); };
+
+/* ===== 유틸 ===== */
+function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+function maxPeriod(){ let mx=0; S.slots.forEach(s=>{ if(s.type==="class"&&s.no>mx) mx=s.no; }); return mx; }
+function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+function downloadJSON(obj,name){ const blob=new Blob([JSON.stringify(obj)],{type:"application/json"}); const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+function opt(val,label,selected){ return '<option value="'+esc(val)+'"'+(selected===val?" selected":"")+'>'+esc(label)+'</option>'; }
+function soundSelectHTML(selected, def, none){
+  let o=""; if(def) o+=opt("","기본 종소리",selected); o+=opt("beep","기본 벨(삐빅)",selected); if(none) o+=opt("none","없음",selected);
+  S.sounds.forEach(s=> o+=opt(s.id, s.name, selected)); return o;
+}
+function mb(bytes){ return bytes? (bytes/1048576).toFixed(1)+"MB" : ""; }
+
+/* ===== 설정 바인딩 ===== */
+function bindSettings(){
+  $("#readableTgl").checked=S.readable; $("#readableTgl").onchange=e=>{ S.readable=e.target.checked; applyLook(); saveStore(); };
+  $("#scaleRange").value=S.scale; $("#scaleVal").textContent=Math.round(S.scale*100)+"%";
+  $("#scaleRange").oninput=e=>{ S.scale=parseFloat(e.target.value); document.documentElement.style.setProperty("--scale",S.scale); $("#scaleVal").textContent=Math.round(S.scale*100)+"%"; };
+  $("#scaleRange").onchange=saveStore;
+  $("#secTgl").checked=S.showSec; $("#secTgl").onchange=e=>{ S.showSec=e.target.checked; lastMain=""; lastSub=null; saveStore(); };
+  $("#h24Tgl").checked=S.h24; $("#h24Tgl").onchange=e=>{ S.h24=e.target.checked; saveStore(); };
+  $("#resetPos").onclick=()=>{ S.pos={x:60,y:60}; applyLook(); saveStore(); };
+  $("#fillScreen").onclick=fillScreen;
+
+  const pal=$("#palettes"); pal.innerHTML="";
+  PALETTES.forEach(p=>{ const sw=document.createElement("div"); sw.className="swatch"; sw.style.background=p.accent; sw.title=p.accent;
+    sw.onclick=()=>{ S.theme.accent=p.accent; S.theme.clock=p.clock; $("#accentColor").value=p.accent; $("#clockColor").value=p.clock; applyLook(); saveStore(); }; pal.appendChild(sw); });
+  $("#accentColor").value=S.theme.accent; $("#accentColor").oninput=e=>{ S.theme.accent=e.target.value; applyLook(); saveStore(); };
+  $("#clockColor").value=S.theme.clock; $("#clockColor").oninput=e=>{ S.theme.clock=e.target.value; applyLook(); saveStore(); };
+  $("#infoColor").value=S.theme.info; $("#infoColor").oninput=e=>{ S.theme.info=e.target.value; applyLook(); saveStore(); };
+
+  $("#bgMode").value=S.background.mode;
+  const bgRefresh=()=>{ const m=S.background.mode;
+    $("#bgColor1Row").style.display=(m==="solid"||m==="gradient")?"flex":"none";
+    $("#bgColor2Row").style.display=(m==="gradient")?"flex":"none";
+    $("#bgImageRow").style.display=(m==="image")?"flex":"none";
+    const prev=$("#bgImagePrev"); if(m==="image"&&S.background.image){ prev.style.display="block"; prev.style.backgroundImage="url("+S.background.image+")"; } else prev.style.display="none";
+  };
+  $("#bgMode").onchange=e=>{ S.background.mode=e.target.value; applyLook(); bgRefresh(); saveStore(); };
+  $("#bgColor1").value=S.background.color1; $("#bgColor1").oninput=e=>{ S.background.color1=e.target.value; applyLook(); saveStore(); };
+  $("#bgColor2").value=S.background.color2; $("#bgColor2").oninput=e=>{ S.background.color2=e.target.value; applyLook(); saveStore(); };
+  $("#bgOpacity").value=S.background.opacity; $("#bgOpacity").oninput=e=>{ S.background.opacity=parseFloat(e.target.value); applyLook(); }; $("#bgOpacity").onchange=saveStore;
+  $("#bgImageBtn").onclick=()=>$("#bgImageInput").click();
+  $("#bgImageInput").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; S.background.image=await readFileAsDataURL(f); S.background.mode="image"; $("#bgMode").value="image"; applyLook(); bgRefresh(); saveGuard(); e.target.value=""; };
+  $("#bgImageClear").onclick=()=>{ S.background.image=""; if(S.background.mode==="image"){ S.background.mode="transparent"; $("#bgMode").value="transparent"; } applyLook(); bgRefresh(); saveStore(); };
+  bgRefresh();
+
+  $("#volRange").value=S.volume; $("#volRange").oninput=e=>{ S.volume=parseFloat(e.target.value); if(curAudio) curAudio.volume=S.volume; }; $("#volRange").onchange=saveStore;
+  $("#addSound").onclick=()=>$("#soundInput").click();
+  $("#soundInput").onchange=async e=>{
+    const files=[...e.target.files];
+    if(!idbOK && !warnedIDB){ warnedIDB=true; alert("이 브라우저에서는 음원 영구 저장이 제한됩니다(Chrome·Edge 권장). 지금은 창을 닫기 전까지만 재생됩니다."); }
+    for(const f of files){ const id="s"+Date.now()+Math.floor(Math.random()*9999);
+      try{ if(idbOK) await idbPut(id,f); urlCache[id]=URL.createObjectURL(f); S.sounds.push({id,name:f.name.replace(/\.[^.]+$/,""),size:f.size}); }
+      catch(err){ alert("파일 저장 오류: "+f.name); }
+    }
+    renderBellUI(); renderCues(); saveStore(); e.target.value="";
+  };
+  $("#timerSoundTest").onclick=()=>{ if(S.timerSound==="beep"||!S.timerSound) beepAlarm(); else playCue([S.timerSound]); };
+  $("#bellStartTest").onclick=()=>playCue([S.bellStartDefault]);
+  $("#bellEndTest").onclick=()=>playCue([S.bellEndDefault]);
+  $("#bellAutoTgl").checked=S.bellAuto; $("#bellAutoTgl").onchange=e=>{ S.bellAuto=e.target.checked; saveStore(); };
+  $("#prepLunchTgl").checked=S.prepLunch.on; $("#prepLunchTgl").onchange=e=>{ S.prepLunch.on=e.target.checked; saveStore(); };
+  $("#prepLunchMin").value=S.prepLunch.min; $("#prepLunchMin").onchange=e=>{ S.prepLunch.min=Math.max(1,parseInt(e.target.value)||5); saveStore(); };
+  $("#prepLunchTest").onclick=()=>playCue([S.prepLunch.sound||"beep"]);
+  $("#prepEveTgl").checked=S.prepEvening.on; $("#prepEveTgl").onchange=e=>{ S.prepEvening.on=e.target.checked; saveStore(); };
+  $("#prepEveTime").value=S.prepEvening.time; $("#prepEveTime").onchange=e=>{ S.prepEvening.time=e.target.value; saveStore(); };
+  $("#prepEveMin").value=S.prepEvening.min; $("#prepEveMin").onchange=e=>{ S.prepEvening.min=Math.max(1,parseInt(e.target.value)||5); saveStore(); };
+  $("#prepEveTest").onclick=()=>playCue([S.prepEvening.sound||"beep"]);
+  renderBellUI(); renderCues(); renderAutoTable();
+
+  $("#addCue").onclick=()=>{ S.cues.push({id:"c"+Date.now(), label:"새 시보", time:"09:00", days:[1,2,3,4,5], sounds:[], on:true}); renderCues(); saveStore(); };
+  $("#addSlot").onclick=()=>{ S.slots.push({type:"class",no:maxPeriod()+1,start:"16:15",end:"17:00"}); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+  $("#resetAll").onclick=()=>{ if(confirm("모든 설정을 기본값으로 되돌릴까요? (음원 보관함도 함께 지워집니다)")){ try{localStorage.removeItem(KEY);}catch(e){} S.sounds.forEach(s=>{try{idbDel(s.id);}catch(e){}}); location.reload(); } };
+
+  $("#tplSave").onclick=()=>{ const n=$("#tplName").value.trim()||("템플릿 "+(S.templates.length+1)); S.templates.push({name:n, data:snapshotTemplate()}); $("#tplName").value=""; renderTemplates(); saveGuard(); };
+  $("#tplExport").onclick=()=>{ const out=Object.assign({},S); out.sounds=S.sounds.map(s=>({id:s.id,name:s.name,size:s.size})); downloadJSON(out,"두레HUD_설정.json"); };
+  $("#tplImportBtn").onclick=()=>$("#tplImport").click();
+  $("#tplImport").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const obj=JSON.parse(r.result); Object.assign(S,obj); if(!Array.isArray(S.templates)) S.templates=[]; if(!Array.isArray(S.sounds)) S.sounds=[]; if(!Array.isArray(S.cues)) S.cues=[]; saveStore(); reinit(); alert("설정을 불러왔습니다. (음원 파일은 이 PC에 있는 것만 재생됩니다)"); }catch(err){ alert("파일을 읽을 수 없습니다."); } }; r.readAsText(f); e.target.value=""; };
+  renderTemplates();
+
+  const iw=$("#idbWarn"); iw.innerHTML = idbOK ? "" : '<div class="warn">이 브라우저는 대용량 음원 영구 저장이 제한됩니다. 방송용으로는 <b>Chrome 또는 Edge</b>를 권장합니다.</div>';
+}
+
+/* ===== 음원 보관함 & 셀렉트 ===== */
+function renderBellUI(){
+  const list=$("#soundList"); list.innerHTML="";
+  if(!S.sounds.length){ list.innerHTML='<div class="footer-note">추가된 음원이 없습니다.</div>'; }
+  S.sounds.forEach(s=>{
+    const it=document.createElement("div"); it.className="sitem";
+    it.innerHTML='<span class="sname">'+esc(s.name)+'</span><span class="ssize">'+mb(s.size)+'</span><span style="display:flex;gap:6px;"><button class="btn mini" data-a="play">▶</button><button class="btn mini ghost" data-a="del">🗑</button></span>';
+    it.querySelector('[data-a="play"]').onclick=()=>playCue([s.id]);
+    it.querySelector('[data-a="del"]').onclick=()=>{
+      if(!confirm("'"+s.name+"' 음원을 삭제할까요?")) return;
+      if(urlCache[s.id]){ try{URL.revokeObjectURL(urlCache[s.id]);}catch(e){} delete urlCache[s.id]; }
+      try{ idbDel(s.id); }catch(e){}
+      S.sounds=S.sounds.filter(x=>x.id!==s.id);
+      if(S.timerSound===s.id) S.timerSound="beep"; if(S.bellSound===s.id) S.bellSound="beep";
+      if(S.bellStartDefault===s.id) S.bellStartDefault="beep"; if(S.bellEndDefault===s.id) S.bellEndDefault="beep";
+      if(S.prepLunch.sound===s.id) S.prepLunch.sound="beep"; if(S.prepEvening.sound===s.id) S.prepEvening.sound="beep";
+      S.slots.forEach(sl=>{ if(sl.bellStart===s.id) sl.bellStart=""; if(sl.bellEnd===s.id) sl.bellEnd=""; });
+      S.cues.forEach(c=>{ c.sounds=(c.sounds||[]).filter(x=>x!==s.id); });
+      renderBellUI(); renderCues(); saveStore();
+    };
+    list.appendChild(it);
+  });
+  const ts=$("#timerSoundSel"); ts.innerHTML=soundSelectHTML(S.timerSound,false,false); ts.onchange=e=>{ S.timerSound=e.target.value; saveStore(); };
+  const bst=$("#bellStartSel"); bst.innerHTML=soundSelectHTML(S.bellStartDefault,false,false); bst.onchange=e=>{ S.bellStartDefault=e.target.value; saveStore(); };
+  const bendd=$("#bellEndSel"); bendd.innerHTML=soundSelectHTML(S.bellEndDefault,false,false); bendd.onchange=e=>{ S.bellEndDefault=e.target.value; saveStore(); };
+  const pl=$("#prepLunchSound"); pl.innerHTML=soundSelectHTML(S.prepLunch.sound||"beep",false,false); pl.onchange=e=>{ S.prepLunch.sound=e.target.value; saveStore(); };
+  const pe=$("#prepEveSound"); pe.innerHTML=soundSelectHTML(S.prepEvening.sound||"beep",false,false); pe.onchange=e=>{ S.prepEvening.sound=e.target.value; saveStore(); };
+  renderBellPerPeriod();
+}
+function renderBellPerPeriod(){
+  const el=$("#bellPerPeriod"); el.innerHTML='<div class="bphead"><span></span><span>시작종</span><span>끝종</span></div>';
+  const classes=S.slots.filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
+  classes.forEach(s=>{
+    const sv=s.bellStart||"", ev=s.bellEnd||"";
+    const row=document.createElement("div"); row.className="bprow";
+    row.innerHTML='<span class="plabel">'+s.no+'교시</span><select class="bstart">'+soundSelectHTML(sv,true,true)+'</select><select class="bend">'+soundSelectHTML(ev,true,true)+'</select>';
+    const bst=row.querySelector(".bstart"), ben=row.querySelector(".bend");
+    bst.onchange=()=>{ s.bellStart=bst.value; saveStore(); };
+    ben.onchange=()=>{ s.bellEnd=ben.value; saveStore(); };
+    el.appendChild(row);
+  });
+}
+
+/* ===== 전교 시보 편집 ===== */
+function renderCues(){
+  const el=$("#cueList"); el.innerHTML="";
+  if(!S.cues.length){ el.innerHTML='<div class="footer-note">등록된 시보가 없습니다. "+ 시보 추가"로 만들어 보세요.</div>'; }
+  S.cues.forEach((c,ci)=>{
+    if(!Array.isArray(c.days)) c.days=[1,2,3,4,5]; if(!Array.isArray(c.sounds)) c.sounds=[];
+    const box=document.createElement("div"); box.className="cue";
+    const top=document.createElement("div"); top.className="cuetop";
+    top.innerHTML='<label class="switch"><input type="checkbox" '+(c.on?"checked":"")+'><span class="track"><span class="knob"></span></span></label><input type="text" value="'+esc(c.label)+'" placeholder="이름 (예: 아침 기상방송)"><input type="time" value="'+c.time+'"><button class="linkbtn">✕</button>';
+    const tog=top.querySelector('input[type="checkbox"]'), lab=top.querySelector('input[type="text"]'), tm=top.querySelector('input[type="time"]'), del=top.querySelector('button');
+    tog.onchange=()=>{ c.on=tog.checked; saveStore(); };
+    lab.oninput=()=>{ c.label=lab.value; saveStore(); };
+    tm.onchange=()=>{ c.time=tm.value; saveStore(); };
+    del.onclick=()=>{ S.cues.splice(ci,1); renderCues(); saveStore(); };
+    box.appendChild(top);
+    const days=document.createElement("div"); days.className="daychips";
+    ["일","월","화","수","목","금","토"].forEach((d,idx)=>{ const b=document.createElement("button"); b.className="daychip"+(c.days.includes(idx)?" on":""); b.textContent=d;
+      b.onclick=()=>{ if(c.days.includes(idx)) c.days=c.days.filter(x=>x!==idx); else c.days.push(idx); renderCues(); saveStore(); }; days.appendChild(b); });
+    box.appendChild(days);
+    const seq=document.createElement("div"); seq.className="cueseq";
+    if(!c.sounds.length){ const p=document.createElement("div"); p.className="footer-note"; p.textContent="재생할 음원을 추가하세요 (위→아래 순서로 재생)."; seq.appendChild(p); }
+    c.sounds.forEach((sid,si)=>{
+      const it=document.createElement("div"); it.className="seqitem";
+      it.innerHTML='<span class="idx">'+(si+1)+'</span><select>'+soundSelectHTML(sid,false,false)+'</select><button class="linkbtn">✕</button>';
+      const selc=it.querySelector("select"), rm=it.querySelector("button");
+      selc.onchange=()=>{ c.sounds[si]=selc.value; saveStore(); };
+      rm.onclick=()=>{ c.sounds.splice(si,1); renderCues(); saveStore(); };
+      seq.appendChild(it);
+    });
+    box.appendChild(seq);
+    const act=document.createElement("div"); act.className="cueactions";
+    act.innerHTML='<button class="btn mini" data-a="add">+ 음원 추가</button><button class="btn mini" data-a="play">▶ 미리듣기</button>';
+    act.querySelector('[data-a="add"]').onclick=()=>{ c.sounds.push(S.sounds.length?S.sounds[0].id:"beep"); renderCues(); saveStore(); };
+    act.querySelector('[data-a="play"]').onclick=()=>{ unlockAudio(); playCue(c.sounds.slice()); };
+    box.appendChild(act);
+    el.appendChild(box);
+  });
+}
+
+/* ===== 템플릿 ===== */
+const TPL_KEYS=["slots","subjects","ann","theme","background","showSec","h24","bellAuto","bellSound","timerSound","prepLunch","prepEvening","cues"];
+function snapshotTemplate(){ const d={}; TPL_KEYS.forEach(k=>{ d[k]=JSON.parse(JSON.stringify(S[k])); }); return d; }
+function applyTemplate(data){ TPL_KEYS.forEach(k=>{ if(data[k]!==undefined) S[k]=JSON.parse(JSON.stringify(data[k])); }); }
+function renderTemplates(){
+  const el=$("#tplList"); el.innerHTML="";
+  if(!S.templates.length){ el.innerHTML='<div class="footer-note">저장된 템플릿이 없습니다.</div>'; return; }
+  S.templates.forEach((t,i)=>{
+    const it=document.createElement("div"); it.className="titem";
+    it.innerHTML='<span class="tname">'+esc(t.name)+'</span><span style="display:flex;gap:6px;"><button class="btn mini primary" data-a="use">적용</button><button class="btn mini" data-a="exp">내보내기</button><button class="btn mini ghost" data-a="del">🗑</button></span>';
+    it.querySelector('[data-a="use"]').onclick=()=>{ applyTemplate(t.data); applyLook(); renderWdTabs(); renderSubjectEditor(); renderSlotEditor(); renderAnnEditor(); renderAnnounce(); renderBellUI(); renderCues(); bindLookInputs(); saveStore(); };
+    it.querySelector('[data-a="exp"]').onclick=()=>downloadJSON({name:t.name,data:t.data,_type:"dure-template"},"두레HUD_"+t.name+".json");
+    it.querySelector('[data-a="del"]').onclick=()=>{ S.templates.splice(i,1); renderTemplates(); saveStore(); };
+    el.appendChild(it);
+  });
+}
+function bindLookInputs(){
+  $("#accentColor").value=S.theme.accent; $("#clockColor").value=S.theme.clock; $("#infoColor").value=S.theme.info;
+  $("#bgMode").value=S.background.mode; $("#bgColor1").value=S.background.color1; $("#bgColor2").value=S.background.color2; $("#bgOpacity").value=S.background.opacity;
+  $("#secTgl").checked=S.showSec; $("#h24Tgl").checked=S.h24; $("#bellAutoTgl").checked=S.bellAuto;
+  $("#prepLunchTgl").checked=S.prepLunch.on; $("#prepLunchMin").value=S.prepLunch.min;
+  $("#prepEveTgl").checked=S.prepEvening.on; $("#prepEveTime").value=S.prepEvening.time; $("#prepEveMin").value=S.prepEvening.min;
+}
+
+/* ===== 시간표 자동 생성 UI ===== */
+function renderAutoTable(){
+  const a=S.autoTable;
+  $("#atStart").value=a.start; $("#atClass").value=a.classMin; $("#atBreak").value=a.breakMin;
+  $("#atPeriods").value=a.periods; $("#atLunchMin").value=a.lunchMin;
+  const laSel=$("#atLunchAfter"); let o=opt("0","점심 없음", String(a.lunchAfter||0));
+  for(let p=1;p<=a.periods;p++) o+=opt(String(p), p+"교시 후", String(a.lunchAfter||0));
+  laSel.innerHTML=o;
+  $("#atStart").onchange=e=>{ a.start=e.target.value; saveStore(); };
+  $("#atClass").onchange=e=>{ a.classMin=Math.max(1,parseInt(e.target.value)||45); saveStore(); };
+  $("#atBreak").onchange=e=>{ a.breakMin=Math.max(0,parseInt(e.target.value)||0); saveStore(); };
+  $("#atPeriods").onchange=e=>{ a.periods=Math.max(1,Math.min(14,parseInt(e.target.value)||1)); if((a.lunchAfter||0)>a.periods) a.lunchAfter=0; renderAutoTable(); saveStore(); };
+  $("#atLunchAfter").onchange=e=>{ a.lunchAfter=parseInt(e.target.value)||0; saveStore(); };
+  $("#atLunchMin").onchange=e=>{ a.lunchMin=Math.max(0,parseInt(e.target.value)||0); saveStore(); };
+  $("#atGen").onclick=()=>{
+    if(!confirm("현재 교시 시간표를 자동 배치로 덮어쓸까요? (과목명·종소리 설정은 유지됩니다)")) return;
+    S.slots=autoBuildSlots(a);
+    renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore();
+  };
+}
+
+/* ===== 화면 꽉 채우기 ===== */
+function fillScreen(){
+  mode="clock"; document.querySelectorAll(".modes button").forEach(x=>x.classList.toggle("on", x.dataset.mode==="clock"));
+  renderControls(); render(new Date());
+  panel.classList.remove("open"); overlay.classList.remove("show");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const prev=S.scale; document.documentElement.style.setProperty("--scale",1);
+    const rect=widget.getBoundingClientRect();
+    const baseW=rect.width, baseH=rect.height;
+    const sx=(window.innerWidth*0.94)/baseW, sy=(window.innerHeight*0.9)/baseH;
+    S.scale=Math.max(0.5, Math.min(6, Math.min(sx,sy)));
+    const w=baseW*S.scale, h=baseH*S.scale;
+    S.pos.x=Math.max(0,(window.innerWidth-w)/2); S.pos.y=Math.max(0,(window.innerHeight-h)/2);
+    applyLook(); $("#scaleRange").value=S.scale; $("#scaleVal").textContent=Math.round(S.scale*100)+"%"; saveStore();
+  }));
+}
+
+/* ===== 시정표 편집 ===== */
+let editWd=1;
+function renderWdTabs(){ const el=$("#wdtabs"); el.innerHTML=""; [1,2,3,4,5].forEach(w=>{ const b=document.createElement("button"); b.textContent=WD[w]; if(w===editWd) b.classList.add("on"); b.onclick=()=>{ editWd=w; renderWdTabs(); renderSubjectEditor(); }; el.appendChild(b); }); }
+function renderSubjectEditor(){
+  const el=$("#subjectEditor"); el.innerHTML="";
+  const classes=S.slots.filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
+  if(!S.subjects[editWd]) S.subjects[editWd]={};
+  classes.forEach(c=>{
+    const info=S.subjects[editWd][c.no]||{name:"",move:false};
+    const row=document.createElement("div"); row.className="ttrow";
+    row.innerHTML='<span class="plabel">'+c.no+'교시</span><input type="text" placeholder="과목명" value="'+esc(info.name)+'"><span class="mv"><input type="checkbox" '+(info.move?"checked":"")+'><label>이동</label></span>';
+    const nameI=row.querySelector('input[type="text"]'), chk=row.querySelector('input[type="checkbox"]');
+    const upd=()=>{ S.subjects[editWd][c.no]={name:nameI.value,move:chk.checked}; saveStore(); };
+    nameI.oninput=upd; chk.onchange=upd; el.appendChild(row);
+  });
+}
+function renderSlotEditor(){
+  const el=$("#slotEditor"); el.innerHTML="";
+  S.slots.sort((a,b)=>hm(a.start)-hm(b.start));
+  S.slots.forEach((s,idx)=>{
+    const row=document.createElement("div"); row.className="timerow";
+    row.innerHTML='<select><option value="class"'+(s.type==="class"?" selected":"")+'>수업</option><option value="break"'+(s.type==="break"?" selected":"")+'>쉬는시간</option><option value="lunch"'+(s.type==="lunch"?" selected":"")+'>점심</option></select><input type="time" value="'+s.start+'"><input type="time" value="'+s.end+'"><button class="linkbtn" title="삭제">✕</button>';
+    const sel=row.querySelector("select"), times=row.querySelectorAll('input[type="time"]'), del=row.querySelector("button");
+    sel.onchange=()=>{ s.type=sel.value; if(s.type==="class"&&!s.no) s.no=maxPeriod()+1; if(s.type!=="class") delete s.no; renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+    times[0].onchange=()=>{ s.start=times[0].value; saveStore(); };
+    times[1].onchange=()=>{ s.end=times[1].value; saveStore(); };
+    del.onclick=()=>{ S.slots.splice(idx,1); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+    el.appendChild(row);
+  });
+}
+function renderAnnEditor(){
+  const el=$("#annEditor"); el.innerHTML="";
+  S.ann.forEach(a=>{ const box=document.createElement("div"); box.className="ann-edit";
+    box.innerHTML='<input type="text" placeholder="버튼 이름" value="'+esc(a.name)+'"><input type="text" placeholder="안내 문구(음성)" value="'+esc(a.msg)+'">';
+    const ins=box.querySelectorAll("input");
+    ins[0].oninput=()=>{ a.name=ins[0].value; renderAnnounce(); saveStore(); };
+    ins[1].oninput=()=>{ a.msg=ins[1].value; saveStore(); };
+    el.appendChild(box);
+  });
+}
+
+/* ===== 시작 ===== */
+function reinit(){ applyLook(); bindSettings(); renderWdTabs(); renderSubjectEditor(); renderSlotEditor(); renderAnnEditor(); renderAnnounce(); renderControls(); if(S.pin) $("#pinBtn").style.color=S.theme.accent; render(new Date()); }
+async function migrateSounds(){
+  let changed=false;
+  for(const s of S.sounds){
+    if(s.data){
+      if(idbOK){ try{ const blob=dataURLtoBlob(s.data); await idbPut(s.id,blob); s.size=blob.size; delete s.data; urlCache[s.id]=URL.createObjectURL(blob); changed=true; }catch(e){ urlCache[s.id]=s.data; } }
+      else { urlCache[s.id]=s.data; }
+    }
+  }
+  if(changed) saveStore();
+}
+async function loadUrls(){ if(!idbOK) return; for(const s of S.sounds){ if(urlCache[s.id]) continue; try{ const blob=await idbGet(s.id); if(blob) urlCache[s.id]=URL.createObjectURL(blob); }catch(e){} } }
+async function initIDB(){ if(!window.indexedDB) return; try{ await idb(); idbOK=true; }catch(e){ idbOK=false; } }
+async function boot(){
+  await initIDB();
+  try{ await migrateSounds(); }catch(e){}
+  try{ await loadUrls(); }catch(e){}
+  reinit();
+  requestAnimationFrame(loop);
+  activity();
+  try{ initPWA(); }catch(e){ console.warn("PWA init", e); }
+  try{ applyLaunchParams(); }catch(e){}
+}
+
+/* ==================================================================
+   PWA · 오프라인 · 화면 꺼짐 방지 · 전체 백업
+   ================================================================== */
+const APP_VERSION="1.0.0";
+
+/* ---------- 토스트 ---------- */
+let toastTimer=null;
+function showToast(id, autoHideMs){
+  const el=$(id); if(!el) return;
+  el.classList.add("show");
+  if(autoHideMs){ clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"), autoHideMs); }
+}
+function hideToast(id){ const el=$(id); if(el) el.classList.remove("show"); }
+
+/* ---------- 설치 안내 ---------- */
+let deferredPrompt=null;
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches
+      || window.matchMedia("(display-mode: window-controls-overlay)").matches
+      || window.navigator.standalone===true;
+}
+function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1); }
+
+async function doInstall(){
+  if(deferredPrompt){
+    hideToast("#installToast");
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(e){}
+    deferredPrompt=null;
+    renderAppStat();
+    return;
+  }
+  if(isIOS()){
+    alert("아이패드·아이폰에서는 Safari 아래쪽 공유 버튼(⬆️)을 누른 뒤\n\"홈 화면에 추가\"를 선택하면 앱으로 설치됩니다.");
+    return;
+  }
+  alert("이 브라우저에서는 주소창 오른쪽의 설치 아이콘(⊕ 또는 🖥)을 눌러 설치할 수 있어요.\n(Chrome·Edge 권장)");
+}
+
+/* ---------- 서비스 워커 ---------- */
+let swReg=null, waitingSW=null;
+function initPWA(){
+  /* 온라인·오프라인 표시 */
+  const netPill=$("#netPill");
+  const syncNet=()=>{ netPill.classList.toggle("show", !navigator.onLine); renderAppStat(); };
+  window.addEventListener("online", syncNet);
+  window.addEventListener("offline", syncNet);
+  syncNet();
+
+  /* 설치 배너 */
+  $("#installGo").onclick=doInstall;
+  $("#installNo").onclick=()=>{ hideToast("#installToast"); try{ localStorage.setItem("dure-hud-installhide", String(Date.now())); }catch(e){} };
+  $("#installBtn").onclick=doInstall;
+  $("#updateGo").onclick=()=>{ if(waitingSW) waitingSW.postMessage("SKIP_WAITING"); else location.reload(); };
+  $("#updateNo").onclick=()=>hideToast("#updateToast");
+  $("#readyNo").onclick=()=>hideToast("#readyToast");
+
+  window.addEventListener("beforeinstallprompt", (e)=>{
+    e.preventDefault(); deferredPrompt=e; renderAppStat();
+    let hidden=0; try{ hidden=parseInt(localStorage.getItem("dure-hud-installhide")||"0"); }catch(err){}
+    if(!isStandalone() && Date.now()-hidden > 7*24*3600*1000) setTimeout(()=>showToast("#installToast"), 2500);
+  });
+  window.addEventListener("appinstalled", ()=>{ deferredPrompt=null; hideToast("#installToast"); renderAppStat(); });
+
+  /* 화면 꺼짐 방지 · 저장된 설정 복원 */
+  $("#wakeTgl").checked=!!S.keepAwake;
+  $("#wakeTgl").onchange=e=>{ S.keepAwake=e.target.checked; saveStore(); if(S.keepAwake) requestWakeLock(); else releaseWakeLock(); renderAppStat(); };
+  if(S.keepAwake) requestWakeLock();
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && S.keepAwake) requestWakeLock(); });
+
+  /* 백업 · 복원 */
+  $("#fullBackup").onclick=fullBackup;
+  $("#fullRestoreBtn").onclick=()=>$("#fullRestoreInput").click();
+  $("#fullRestoreInput").onchange=e=>{ const f=e.target.files[0]; if(f) fullRestore(f); e.target.value=""; };
+  $("#recacheBtn").onclick=recache;
+  $("#updateCheck").onclick=checkUpdate;
+  $("#verHint").textContent="현재 버전 "+APP_VERSION;
+
+  /* 서비스 워커 등록 */
+  if("serviceWorker" in navigator && location.protocol!=="file:"){
+    navigator.serviceWorker.register("./sw.js", {scope:"./"}).then(reg=>{
+      swReg=reg;
+      if(reg.waiting && navigator.serviceWorker.controller){ waitingSW=reg.waiting; showToast("#updateToast"); }
+      reg.addEventListener("updatefound", ()=>{
+        const nw=reg.installing; if(!nw) return;
+        nw.addEventListener("statechange", ()=>{
+          if(nw.state==="installed"){
+            if(navigator.serviceWorker.controller){ waitingSW=nw; showToast("#updateToast"); }
+            else { showToast("#readyToast", 6000); }
+            renderAppStat();
+          }
+        });
+      });
+      renderAppStat();
+    }).catch(err=>{ console.warn("SW 등록 실패", err); renderAppStat(); });
+
+    let reloading=false;
+    navigator.serviceWorker.addEventListener("controllerchange", ()=>{ if(reloading) return; reloading=true; location.reload(); });
+  }
+  renderAppStat();
+}
+
+function renderAppStat(){
+  const el=$("#appStat"); if(!el) return;
+  const swOn=("serviceWorker" in navigator) && !!navigator.serviceWorker.controller;
+  const items=[
+    {t: navigator.onLine ? "온라인" : "오프라인", c: navigator.onLine ? "on" : "off"},
+    {t: swOn ? "오프라인 저장 완료" : "오프라인 저장 준비 중", c: swOn ? "on" : "off"},
+    {t: isStandalone() ? "앱으로 실행 중" : (deferredPrompt ? "설치 가능" : "브라우저에서 실행 중"), c: isStandalone() ? "on" : ""},
+    {t: wakeLock ? "화면 유지 중" : "화면 유지 꺼짐", c: wakeLock ? "on" : ""},
+    {t: idbOK ? "음원 저장소 정상" : "음원 저장소 제한", c: idbOK ? "on" : "off"},
+  ];
+  el.innerHTML=items.map(i=>'<span class="chip '+i.c+'">'+esc(i.t)+"</span>").join("");
+  const btn=$("#installBtn");
+  if(btn) btn.textContent = isStandalone() ? "설치됨 ✓" : "설치하기";
+}
+
+/* ---------- 화면 꺼짐 방지 (Wake Lock) ---------- */
+let wakeLock=null;
+async function requestWakeLock(){
+  if(!("wakeLock" in navigator)) { renderAppStat(); return; }
+  if(wakeLock) return;
+  try{
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", ()=>{ wakeLock=null; renderAppStat(); });
+  }catch(e){ wakeLock=null; }
+  renderAppStat();
+}
+function releaseWakeLock(){ if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock=null; } renderAppStat(); }
+
+/* ---------- 오프라인 자료 다시 받기 · 업데이트 확인 ---------- */
+async function recache(){
+  const b=$("#recacheBtn"); const old=b.textContent; b.textContent="받는 중…"; b.disabled=true;
+  try{
+    if(swReg){ await swReg.update(); }
+    if("caches" in window){
+      const names=await caches.keys();
+      const c=await caches.open(names.find(n=>n.startsWith("dure-hud-")) || "dure-hud-manual");
+      const list=["./index.html","./manifest.webmanifest","./assets/fonts/pretendard.css",
+        "./assets/fonts/Pretendard-Regular.woff2","./assets/fonts/Pretendard-Bold.woff2","./assets/fonts/Pretendard-ExtraBold.woff2",
+        "./assets/icons/icon.svg","./assets/icons/icon-192.png","./assets/icons/icon-512.png",
+        "./assets/icons/icon-maskable-192.png","./assets/icons/icon-maskable-512.png",
+        "./assets/icons/apple-touch-icon.png","./assets/icons/favicon-32.png","./assets/icons/favicon.ico"];
+      for(const u of list){ try{ await c.add(new Request(u,{cache:"reload"})); }catch(e){} }
+    }
+    b.textContent="완료 ✓";
+  }catch(e){ b.textContent="실패"; }
+  setTimeout(()=>{ b.textContent=old; b.disabled=false; renderAppStat(); }, 1600);
+}
+async function checkUpdate(){
+  const b=$("#updateCheck"); const old=b.textContent; b.textContent="확인 중…"; b.disabled=true;
+  try{
+    if(swReg){ await swReg.update(); await new Promise(r=>setTimeout(r,1200)); }
+    $("#verHint").textContent = waitingSW ? "새 버전이 있습니다 — 새로고침하세요" : ("최신 버전입니다 · v"+APP_VERSION);
+  }catch(e){ $("#verHint").textContent="확인할 수 없습니다 (오프라인)"; }
+  b.textContent=old; b.disabled=false;
+}
+
+/* ---------- 전체 백업 · 복원 (음원 포함) ---------- */
+function blobToBase64(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(blob); });
+}
+function base64ToBlob(b64, mime){
+  const bin=atob(b64); const len=bin.length; const arr=new Uint8Array(len);
+  for(let i=0;i<len;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr], {type: mime||"audio/mpeg"});
+}
+function setProg(wrapSel, barSel, ratio){
+  const w=$(wrapSel), b=$(barSel); if(!w||!b) return;
+  if(ratio==null){ w.classList.remove("show"); b.style.width="0%"; return; }
+  w.classList.add("show"); b.style.width=Math.round(ratio*100)+"%";
+}
+
+async function fullBackup(){
+  const btn=$("#fullBackup"); const old=btn.textContent; btn.disabled=true; btn.textContent="준비 중…";
+  try{
+    const pack={ _type:"dure-hud-backup", version:APP_VERSION, savedAt:new Date().toISOString(),
+                 settings:JSON.parse(JSON.stringify(S)), audio:[] };
+    const total=S.sounds.length||1;
+    for(let i=0;i<S.sounds.length;i++){
+      const s=S.sounds[i];
+      setProg("#backupProg","#backupBar",(i+0.1)/total);
+      btn.textContent="음원 "+(i+1)+"/"+S.sounds.length;
+      try{
+        const blob = idbOK ? await idbGet(s.id) : null;
+        if(blob) pack.audio.push({ id:s.id, name:s.name, mime:blob.type||"audio/mpeg", size:blob.size, data:await blobToBase64(blob) });
+      }catch(e){ console.warn("백업 건너뜀", s.name, e); }
+      setProg("#backupProg","#backupBar",(i+1)/total);
+    }
+    btn.textContent="파일 만드는 중…";
+    const blob=new Blob([JSON.stringify(pack)], {type:"application/json"});
+    const stamp=new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const a=document.createElement("a"); const u=URL.createObjectURL(blob);
+    a.href=u; a.download="dure-hud-backup-"+stamp+".dhudbak";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 3000);
+    $("#backupHint").textContent="마지막 백업 "+mb(blob.size)+" · 음원 "+pack.audio.length+"개";
+    btn.textContent="완료 ✓";
+  }catch(e){
+    console.error(e); alert("백업에 실패했습니다. 음원 용량이 너무 큰 경우 일부를 지우고 다시 시도해 보세요.");
+    btn.textContent="실패";
+  }
+  setProg("#backupProg","#backupBar",null);
+  setTimeout(()=>{ btn.textContent=old; btn.disabled=false; }, 1600);
+}
+
+async function fullRestore(file){
+  if(!confirm("백업 파일로 되돌릴까요?\n\n지금의 설정·시간표·음원이 모두 백업 내용으로 바뀝니다.")) return;
+  const btn=$("#fullRestoreBtn"); const old=btn.textContent; btn.disabled=true; btn.textContent="읽는 중…";
+  try{
+    const text=await file.text();
+    const pack=JSON.parse(text);
+    if(pack._type!=="dure-hud-backup" || !pack.settings) throw new Error("형식이 올바르지 않습니다.");
+
+    /* 기존 음원 정리 */
+    for(const s of (S.sounds||[])){ try{ await idbDel(s.id); }catch(e){} }
+    Object.keys(urlCache).forEach(k=>{ try{ URL.revokeObjectURL(urlCache[k]); }catch(e){} delete urlCache[k]; });
+
+    /* 음원 복원 */
+    const audio=Array.isArray(pack.audio)?pack.audio:[];
+    for(let i=0;i<audio.length;i++){
+      const a=audio[i];
+      btn.textContent="음원 "+(i+1)+"/"+audio.length;
+      setProg("#restoreProg","#restoreBar",(i+1)/(audio.length||1));
+      try{
+        const blob=base64ToBlob(a.data, a.mime);
+        if(idbOK) await idbPut(a.id, blob);
+        urlCache[a.id]=URL.createObjectURL(blob);
+      }catch(e){ console.warn("복원 건너뜀", a.name, e); }
+    }
+
+    /* 설정 복원 */
+    const keep=pack.settings;
+    delete keep._type;
+    Object.keys(S).forEach(k=>{ if(keep[k]!==undefined) S[k]=keep[k]; });
+    Object.keys(keep).forEach(k=>{ S[k]=keep[k]; });
+    saveStore();
+    btn.textContent="완료 ✓";
+    setProg("#restoreProg","#restoreBar",null);
+    alert("복원이 끝났습니다. 화면을 새로 불러옵니다.");
+    location.reload();
+  }catch(e){
+    console.error(e);
+    setProg("#restoreProg","#restoreBar",null);
+    alert("복원에 실패했습니다.\n" + (e && e.message ? e.message : ""));
+    btn.textContent=old; btn.disabled=false;
+  }
+}
+
+/* ---------- 앱 바로가기(shortcuts) 파라미터 ---------- */
+function applyLaunchParams(){
+  const q=new URLSearchParams(location.search);
+  const m=q.get("mode");
+  if(m==="timer"||m==="watch"){
+    mode=m;
+    document.querySelectorAll(".modes button").forEach(x=>x.classList.toggle("on", x.dataset.mode===m));
+    renderControls();
+    const sec=parseInt(q.get("sec")||"0");
+    if(m==="timer" && sec>0){ timerSet(sec); }
+    render(new Date());
+  }
+  if(q.get("fill")==="1") setTimeout(fillScreen, 260);
+}
+
+boot();
+</script>
+</body>
+</html>

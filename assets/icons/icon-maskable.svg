@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#101a2b"/><stop offset="1" stop-color="#070c14"/>
+  </linearGradient>
+  <radialGradient id="halo" cx="50%" cy="46%" r="58%">
+    <stop offset="0" stop-color="#34e5ff" stop-opacity=".34"/>
+    <stop offset="1" stop-color="#34e5ff" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="dial" cx="50%" cy="34%" r="72%">
+    <stop offset="0" stop-color="#16273c"/><stop offset="1" stop-color="#0a121d"/>
+  </radialGradient>
+  <linearGradient id="bell" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#1c3348"/><stop offset="1" stop-color="#0d1826"/>
+  </linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur stdDeviation="10" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<rect width="512" height="512" fill="url(#bg)"/>
+<circle cx="256" cy="262" r="198" fill="url(#halo)"/>
+<path d="M 208.2 210.0 a 37.4 37.4 0 1 0 -62.4 -16.6 Z" fill="url(#bell)" stroke="#34e5ff" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M 303.8 210.0 a 37.4 37.4 0 1 1 62.4 -16.6 Z" fill="url(#bell)" stroke="#34e5ff" stroke-width="6.2" stroke-linejoin="round"/>
+<rect x="239.4" y="137.2" width="33.3" height="20.8" rx="10.4" fill="#34e5ff" opacity=".9"/>
+<path d="M 193.6 347.3 L 166.6 378.5" stroke="#34e5ff" stroke-width="13.9" stroke-linecap="round" opacity=".85"/>
+<path d="M 318.4 347.3 L 345.4 378.5" stroke="#34e5ff" stroke-width="13.9" stroke-linecap="round" opacity=".85"/>
+<circle cx="256" cy="262" r="104.0" fill="url(#dial)" stroke="#34e5ff" stroke-width="11.1" filter="url(#glow)"/>
+<circle cx="256" cy="262" r="86.3" fill="none" stroke="#34e5ff" stroke-width="2.1" opacity=".35"/>
+<circle cx="256.0" cy="187.1" r="5.7" fill="#7ef0ff" opacity=".95"/>
+<circle cx="293.4" cy="197.2" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="320.8" cy="224.6" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="330.9" cy="262.0" r="5.7" fill="#7ef0ff" opacity=".95"/>
+<circle cx="320.8" cy="299.4" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="293.4" cy="326.8" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="256.0" cy="336.9" r="5.7" fill="#7ef0ff" opacity=".95"/>
+<circle cx="218.6" cy="326.8" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="191.2" cy="299.4" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="181.1" cy="262.0" r="5.7" fill="#7ef0ff" opacity=".95"/>
+<circle cx="191.2" cy="224.6" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<circle cx="218.6" cy="197.2" r="3.3" fill="#7ef0ff" opacity=".45"/>
+<path d="M 256 262 L 224.8 218.3" stroke="#ffffff" stroke-width="13.9" stroke-linecap="round"/>
+<path d="M 256 262 L 291.4 207.9" stroke="#7ef0ff" stroke-width="10.4" stroke-linecap="round"/>
+<circle cx="256" cy="262" r="7.8" fill="#ffffff"/>
+<ellipse cx="218.6" cy="293.2" rx="12.0" ry="13.8" fill="#ffffff"/>
+<circle cx="221.7" cy="290.1" r="4.1" fill="#0a1018"/>
+<ellipse cx="293.4" cy="293.2" rx="12.0" ry="13.8" fill="#ffffff"/>
+<circle cx="296.6" cy="290.1" r="4.1" fill="#0a1018"/>
+<path d="M 238.3 314.0 Q 256 334.8 273.7 314.0" fill="none" stroke="#ffffff" stroke-width="8.3" stroke-linecap="round" opacity=".92"/>
+<ellipse cx="193.6" cy="303.6" rx="12.5" ry="7.8" fill="#ff7ac6" opacity=".38"/>
+<ellipse cx="318.4" cy="303.6" rx="12.5" ry="7.8" fill="#ff7ac6" opacity=".38"/>
+</svg>

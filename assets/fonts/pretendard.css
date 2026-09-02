@@ -1,0 +1,22 @@
+/* Pretendard (로컬 번들 · 한글+라틴 서브셋) — 오프라인 완전 동작용 */
+@font-face{
+  font-family:"Pretendard";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("./Pretendard-Regular.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Pretendard";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("./Pretendard-Bold.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Pretendard";
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url("./Pretendard-ExtraBold.woff2") format("woff2");
+}
