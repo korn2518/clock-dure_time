@@ -4,7 +4,7 @@
         나머지 정적 자원은 캐시 우선 → 없으면 네트워크 후 저장.
    업데이트: VERSION 을 올리면 새 캐시가 만들어지고, 페이지에서 '새로고침'을 누를 때 교체됩니다. */
 
-const VERSION = "v1.1.0";
+const VERSION = "v1.2.0";
 const CACHE = `dure-hud-${VERSION}`;
 
 /* 상대 경로로 두어 GitHub Pages 서브경로(/저장소이름/)에서도 그대로 동작합니다. */
