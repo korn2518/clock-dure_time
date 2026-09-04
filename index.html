@@ -156,6 +156,44 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
 .daychip.on{background:var(--neon); color:#04121a; border-color:transparent;}
 .cueseq{display:flex; flex-direction:column; gap:6px;}
 .seqitem{display:grid; grid-template-columns:18px 1fr 24px; gap:6px; align-items:center;}
+
+/* ===== 주간 템플릿 ===== */
+.wkgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:4px;}
+.wkcard{position:relative; display:flex; flex-direction:column; gap:3px; padding:11px 10px 10px; border-radius:13px; cursor:pointer;
+  background:rgba(255,255,255,.045); border:1px solid var(--card-line); text-align:left; font-family:var(--font); transition:.15s; min-height:64px;}
+.wkcard:hover{border-color:var(--neon); box-shadow:0 0 14px rgba(var(--neon-rgb),.2);}
+.wkcard .wkno{font-size:9.5px; font-weight:800; letter-spacing:.4px; color:var(--muted); opacity:.75;}
+.wkcard .wkname{font-size:12.5px; font-weight:800; letter-spacing:-.3px; color:#eef6ff; line-height:1.25; word-break:keep-all;}
+.wkcard .wkmeta{font-size:10px; color:var(--muted); margin-top:auto;}
+.wkcard.empty .wkname{color:var(--muted);}
+.wkcard.on{background:rgba(var(--neon-rgb),.14); border-color:var(--neon); box-shadow:0 0 16px rgba(var(--neon-rgb),.3);}
+.wkcard.on .wkname{color:var(--neon);}
+.wkcard.on .wkmeta{color:rgba(var(--neon-rgb),.85);}
+.wkcard .wkdot{position:absolute; top:8px; right:9px; width:6px; height:6px; border-radius:50%; background:var(--neon); box-shadow:0 0 8px var(--neon); display:none;}
+.wkcard.on .wkdot{display:block;}
+.wkacts{display:none; gap:4px; margin-top:7px; flex-wrap:wrap;}
+.wkgrid.editing .wkacts{display:flex;}
+.wkgrid.editing .wkcard{cursor:default; min-height:104px;}
+.wkgrid.editing .wkcard:hover{border-color:var(--card-line); box-shadow:none;}
+.wkacts button{font-family:var(--font); font-size:10.5px; font-weight:700; padding:4px 7px; border-radius:7px; cursor:pointer;
+  color:var(--muted); background:rgba(255,255,255,.06); border:1px solid var(--card-line);}
+.wkacts button:hover{color:#fff; border-color:var(--neon);}
+.wkacts button.acc{color:#04121a; background:var(--neon); border-color:transparent;}
+.wkbar{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px;}
+
+/* ===== 요일별 시정표 · 요일별 시보 ===== */
+.dnotice{font-size:11.5px; line-height:1.55; color:var(--muted); background:rgba(255,255,255,.04); border:1px solid var(--card-line);
+  border-radius:10px; padding:8px 10px; margin-bottom:10px;}
+.dnotice b{color:var(--neon); font-weight:800;}
+.dayops{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+.wdtabs button .dmark{display:block; font-size:9px; font-weight:800; letter-spacing:0; margin-top:2px; opacity:.85;}
+.wdtabs button.set{border-color:rgba(var(--neon-rgb),.45);}
+.dayblock{border:1px solid var(--card-line); border-radius:10px; padding:9px 10px; margin-top:7px; background:rgba(255,255,255,.025);}
+.dayblock .dhead{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;}
+.dayblock .dname{font-size:12px; font-weight:800; color:#dce9f7; letter-spacing:-.2px;}
+.dayblock .dname i{font-style:normal; color:var(--muted); font-weight:600; font-size:11px; margin-left:5px;}
+.dayblock .dacts{display:flex; gap:5px;}
+@media (max-width:420px){ .wkgrid{grid-template-columns:repeat(2,1fr);} }
 .seqitem .idx{font-size:11px; color:var(--muted); text-align:center;}
 .seqitem select{width:100%; font-size:12px; padding:5px 4px;}
 .cueactions{display:flex; gap:6px; margin-top:8px;}
@@ -222,6 +260,12 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
   </div>
 </div>
 
+<div class="toast ok" id="weekToast">
+  <div class="ico">🗓️</div>
+  <div class="txt"><b>주간 설정을 적용했어요</b><span id="weekToastName">—</span></div>
+  <div class="acts"><button class="btn ghost sm" onclick="this.closest('.toast').classList.remove('show')">확인</button></div>
+</div>
+
 <div class="toast ok" id="readyToast">
   <div class="ico">✅</div>
   <div class="txt"><b>오프라인 준비 완료</b><span>이제 인터넷이 끊겨도 이 앱은 그대로 열립니다.</span></div>
@@ -257,6 +301,16 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
 <div class="panel" id="panel">
   <h2>설정</h2>
   <div class="sub">우리 반·전교 시보 상황에 맞게 바꿔 보세요. 설정은 이 브라우저(PC)에 저장됩니다.</div>
+
+  <div class="section">
+    <div class="wkbar">
+      <span class="label" style="margin:0;">주간 템플릿</span>
+      <button class="linkbtn" id="wkEditToggle">편집</button>
+    </div>
+    <div class="hint" style="margin-bottom:8px;">한 주의 <b>요일별 시정표·과목·시보</b>를 통째로 담아 둡니다. 버튼을 누르면 그 주간 설정이 한 번에 적용돼요.</div>
+    <div class="wkgrid" id="weekPresets"></div>
+    <div class="footer-note" id="wkNote">비어 있는 칸은 눌러서 지금 설정을 그대로 저장할 수 있어요. 이름은 [편집]에서 바꿉니다.</div>
+  </div>
 
   <div class="section">
     <span class="label">앱 · 오프라인</span>
@@ -329,7 +383,7 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
 
   <div class="section">
     <span class="label">전교 시보 · 방송 스케줄</span>
-    <div class="hint" style="margin-bottom:8px;">정해진 시각에 음원을 순서대로 재생합니다. 예) 기상송 → 아침 녹음 방송 이어서 재생.</div>
+    <div class="hint" style="margin-bottom:8px;">정해진 시각에 음원을 순서대로 재생합니다. 예) 기상송 → 아침 녹음 방송 이어서 재생.<br><b>요일별 음원</b>을 켜면 월·화·수·목·금마다 다른 방송 파일을 넣을 수 있어요.</div>
     <button class="btn sm" id="addCue">+ 시보 추가</button>
     <div id="cueList" style="margin-top:6px;"></div>
   </div>
@@ -340,7 +394,7 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
       <label class="switch"><input type="checkbox" id="bellAutoTgl"><span class="track"><span class="knob"></span></span></label></div>
     <div class="field"><div class="name">기본 시작종</div><div class="val"><select id="bellStartSel"></select><button class="btn mini" id="bellStartTest">듣기</button></div></div>
     <div class="field"><div class="name">기본 끝종</div><div class="val"><select id="bellEndSel"></select><button class="btn mini" id="bellEndTest">듣기</button></div></div>
-    <div class="subhead">교시별 종소리 (미지정 시 위 기본 종소리 사용 · 업로드 파일도 선택 가능)</div>
+    <div class="subhead">교시별 종소리 <span id="bellDayTag"></span> (미지정 시 위 기본 종소리 사용 · 업로드 파일도 선택 가능)</div>
     <div id="bellPerPeriod"></div>
     <div class="field" style="border-top:1px solid rgba(255,255,255,.06); margin-top:6px; padding-top:12px;"><div><div class="name">점심 예비종</div><div class="hint">점심 시작 몇 분 전에 알림</div></div>
       <label class="switch"><input type="checkbox" id="prepLunchTgl"><span class="track"><span class="knob"></span></span></label></div>
@@ -353,16 +407,25 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
 
   <div class="section">
     <span class="label">시정표 · 시간표</span>
-    <div class="subhead" style="border:none; padding-top:0;">시간표 자동 생성 (러닝타임만 정하면 자동 배치)</div>
+    <div class="field"><div><div class="name">요일별로 다른 시정표</div><div class="hint">요일마다 교시 시간이 다를 때 켜세요 (월~금)</div></div>
+      <label class="switch"><input type="checkbox" id="perDayTgl"><span class="track"><span class="knob"></span></span></label></div>
+
+    <div class="subhead" style="border:none;">편집할 요일</div>
+    <div class="wdtabs" id="wdtabs"></div>
+    <div class="dnotice" id="dayNotice"></div>
+    <div class="dayops" id="dayOps"></div>
+
+    <div class="subhead">시간표 자동 생성 (러닝타임만 정하면 자동 배치)</div>
     <div class="field"><div class="name">첫 교시 시작</div><div class="val"><input type="time" id="atStart" style="width:112px;"></div></div>
     <div class="field"><div class="name">수업 시간(분)</div><div class="val"><input type="number" id="atClass" min="10" max="120" style="width:66px;"></div></div>
     <div class="field"><div class="name">쉬는시간(분)</div><div class="val"><input type="number" id="atBreak" min="0" max="60" style="width:66px;"></div></div>
     <div class="field"><div class="name">교시 수</div><div class="val"><input type="number" id="atPeriods" min="1" max="14" style="width:66px;"></div></div>
     <div class="field"><div class="name">점심 위치</div><div class="val"><select id="atLunchAfter"></select></div></div>
     <div class="field"><div class="name">점심 시간(분)</div><div class="val"><input type="number" id="atLunchMin" min="0" max="120" style="width:66px;"></div></div>
-    <div class="field" style="border:none;"><div class="hint" style="max-width:180px;">예: 45분 수업·10분 쉬는시간·8교시, 4교시 후 60분 점심</div><button class="btn sm primary" id="atGen">자동 배치</button></div>
-    <div class="subhead">과목 편집 (요일별)</div>
-    <div class="wdtabs" id="wdtabs"></div>
+    <div class="field" style="border:none;"><div class="hint" style="max-width:170px;">예: 45분 수업·10분 쉬는시간·8교시, 4교시 후 60분 점심</div>
+      <div class="val" style="flex-wrap:wrap; justify-content:flex-end;"><button class="btn sm primary" id="atGen">자동 배치</button><button class="btn sm" id="atGenAll">월~금 전체</button></div></div>
+
+    <div class="subhead">과목 편집</div>
     <div id="subjectEditor"></div>
     <div class="field" style="border:none; margin-top:12px; padding-bottom:4px;"><div><div class="name">교시 시간</div><div class="hint">시작·끝 시각과 구분(수업/쉬는시간/점심)</div></div>
       <button class="linkbtn" id="addSlot">+ 칸</button></div>
@@ -436,6 +499,8 @@ const DEFAULT_ANN=[
   {name:"모둠 활동",msg:"모둠끼리 모여서 활동을 시작해 주세요."},
   {name:"발표 준비",msg:"발표 준비하고 앞으로 나와 주세요."},
 ];
+const DEFAULT_WEEK_NAMES=["정상 주간","시험 주간","단축 수업","행사 주간","체험학습","방학·특별"];
+const WEEKDAYS=[1,2,3,4,5];               /* 요일별 시정표는 월~금 */
 const PALETTES=[
   {accent:"#34e5ff",clock:"#ffffff"},{accent:"#ff5db1",clock:"#ffffff"},{accent:"#b6ff3c",clock:"#f4ffe4"},{accent:"#ffb02e",clock:"#fff6e6"},
   {accent:"#b98cff",clock:"#ffffff"},{accent:"#ff6b5e",clock:"#fff0ee"},{accent:"#4ade80",clock:"#eafff2"},{accent:"#ffffff",clock:"#ffffff"},
@@ -453,8 +518,9 @@ const S=Object.assign({
   autoTable:{start:"09:00", classMin:45, breakMin:10, periods:7, lunchAfter:4, lunchMin:60},
   prepLunch:{on:false, sound:"beep", min:5},
   prepEvening:{on:false, sound:"beep", time:"18:00", min:5},
-  cues:[{id:"c-morning", label:"아침 기상방송", time:"08:00", days:[1,2,3,4,5], sounds:[], on:false}],
+  cues:[{id:"c-morning", label:"아침 기상방송", time:"08:00", days:[1,2,3,4,5], sounds:[], on:false, perDay:false, daySounds:{}}],
   templates:[],
+  perDaySlots:false, daySlots:{}, weekPresets:[], activePreset:-1,
 }, loadStore());
 if(!S.subjects) S.subjects={1:{},2:{},3:{},4:{},5:{}};
 if(!S.ann||S.ann.length!==5) S.ann=JSON.parse(JSON.stringify(DEFAULT_ANN));
@@ -470,6 +536,35 @@ if(!S.bellEndDefault) S.bellEndDefault=S.bellSound||"beep";
 if(!S.autoTable) S.autoTable={start:"09:00",classMin:45,breakMin:10,periods:7,lunchAfter:4,lunchMin:60};
 if(!S.prepLunch) S.prepLunch={on:false,sound:"beep",min:5};
 if(!S.prepEvening) S.prepEvening={on:false,sound:"beep",time:"18:00",min:5};
+
+/* ----- 요일별 시정표 · 요일별 시보 · 주간 템플릿 정규화 -----
+   앱 시작 시는 물론 템플릿·주간 템플릿·백업을 불러온 뒤에도 다시 호출합니다. */
+function normalizeState(){
+  if(typeof S.perDaySlots!=="boolean") S.perDaySlots=false;
+  if(!S.daySlots || typeof S.daySlots!=="object" || Array.isArray(S.daySlots)) S.daySlots={};
+  WEEKDAYS.forEach(d=>{ if(!Array.isArray(S.daySlots[d])) S.daySlots[d]=[]; });
+  if(!Array.isArray(S.slots)||!S.slots.length) S.slots=JSON.parse(JSON.stringify(DEFAULT_SLOTS));
+  if(!S.subjects||typeof S.subjects!=="object") S.subjects={};
+  WEEKDAYS.forEach(d=>{ if(!S.subjects[d]||typeof S.subjects[d]!=="object") S.subjects[d]={}; });
+  if(!Array.isArray(S.cues)) S.cues=[];
+  S.cues.forEach(c=>{
+    if(!Array.isArray(c.days)) c.days=[1,2,3,4,5];
+    if(!Array.isArray(c.sounds)) c.sounds=[];
+    if(typeof c.perDay!=="boolean") c.perDay=false;
+    if(!c.daySounds || typeof c.daySounds!=="object" || Array.isArray(c.daySounds)) c.daySounds={};
+    for(let d=0;d<7;d++){ if(!Array.isArray(c.daySounds[d])) c.daySounds[d]=[]; }
+  });
+  if(!Array.isArray(S.weekPresets)) S.weekPresets=[];
+  for(let i=0;i<6;i++){
+    const p=S.weekPresets[i];
+    if(!p || typeof p!=="object") S.weekPresets[i]={name:DEFAULT_WEEK_NAMES[i], data:null, savedAt:""};
+    else { if(typeof p.name!=="string"||!p.name) p.name=DEFAULT_WEEK_NAMES[i]; if(p.data===undefined) p.data=null; if(typeof p.savedAt!=="string") p.savedAt=""; }
+  }
+  S.weekPresets.length=6;
+  if(typeof S.activePreset!=="number") S.activePreset=-1;
+  if(S.activePreset<-1||S.activePreset>5) S.activePreset=-1;
+}
+normalizeState();
 
 const $=s=>document.querySelector(s);
 const widget=$("#widget"), tMain=$("#tMain"), tSub=$("#tSub"), bgLayer=$("#bgLayer");
@@ -523,9 +618,36 @@ function autoBuildSlots(cfg){
   }
   return slots;
 }
+/* 해당 요일에 실제로 쓰이는 시정표를 돌려줍니다.
+   요일별 모드가 꺼져 있거나 그 요일이 비어 있으면 공통 시정표를 사용합니다. */
+function slotsOf(wd){
+  if(S.perDaySlots && Array.isArray(S.daySlots[wd]) && S.daySlots[wd].length) return S.daySlots[wd];
+  return S.slots;
+}
+function hasOwnSlots(wd){ return !!(S.perDaySlots && Array.isArray(S.daySlots[wd]) && S.daySlots[wd].length); }
+/* 편집 중인 요일이 "실제로 쓰는" 시정표 배열.
+   전용 시정표가 있으면 그것을, 없으면 공통 시정표를 그대로 편집합니다. */
+function editSlots(){
+  if(S.perDaySlots){
+    if(!Array.isArray(S.daySlots[editWd])) S.daySlots[editWd]=[];
+    if(S.daySlots[editWd].length) return S.daySlots[editWd];
+  }
+  return S.slots;
+}
+function allSlotArrays(){
+  const out=[S.slots];
+  WEEKDAYS.forEach(d=>{ if(Array.isArray(S.daySlots[d])) out.push(S.daySlots[d]); });
+  return out;
+}
+/* 시보의 해당 요일 음원 목록 */
+function cueSoundsFor(c, wd){
+  if(c.perDay) return ((c.daySounds||{})[wd]||[]).slice();
+  return (c.sounds||[]).slice();
+}
+
 function computeStatus(now){
   const wd=now.getDay(), cur=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
-  const slots=S.slots.slice().sort((a,b)=>hm(a.start)-hm(b.start)); const subj=S.subjects[wd]||{};
+  const slots=slotsOf(wd).slice().sort((a,b)=>hm(a.start)-hm(b.start)); const subj=S.subjects[wd]||{};
   if(wd===0||wd===6) return {pill:"주말",cls:"rest",subject:"",remainSec:null};
   if(!slots.length) return {pill:"",cls:"",subject:"",remainSec:null};
   if(cur<hm(slots[0].start)) return {pill:"등교 전",cls:"",subject:"",remainSec:Math.round((hm(slots[0].start)-cur)*60)};
@@ -589,15 +711,22 @@ function checkBell(now){
   const nowSec=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
   if(nowSec===lastBellSec) return;
   const wd=now.getDay();
-  for(const c of S.cues){ if(c.on && (c.days||[]).includes(wd) && nowSec===hmSec(c.time)){ lastBellSec=nowSec; if(S.sfx) playCue((c.sounds||[]).slice()); return; } }
+  for(const c of S.cues){
+    if(c.on && (c.days||[]).includes(wd) && nowSec===hmSec(c.time)){
+      lastBellSec=nowSec;
+      const list=cueSoundsFor(c, wd);
+      if(S.sfx && list.length) playCue(list);
+      return;
+    }
+  }
   if(S.bellAuto && wd>=1 && wd<=5){
-    for(const s of S.slots){
+    for(const s of slotsOf(wd)){
       if(s.type!=="class") continue;
       if(nowSec===hmSec(s.start)){ lastBellSec=nowSec; const r=resolveBell(s.bellStart,"start"); if(r&&S.sfx) playCue([r]); return; }
       if(nowSec===hmSec(s.end)){ lastBellSec=nowSec; const r=resolveBell(s.bellEnd,"end"); if(r&&S.sfx) playCue([r]); return; }
     }
   }
-  if(S.prepLunch.on && wd>=1 && wd<=5){ const lunch=S.slots.find(s=>s.type==="lunch"); if(lunch && nowSec===hmSec(lunch.start)-S.prepLunch.min*60){ lastBellSec=nowSec; if(S.sfx) playCue([S.prepLunch.sound||"beep"]); return; } }
+  if(S.prepLunch.on && wd>=1 && wd<=5){ const lunch=slotsOf(wd).find(s=>s.type==="lunch"); if(lunch && nowSec===hmSec(lunch.start)-S.prepLunch.min*60){ lastBellSec=nowSec; if(S.sfx) playCue([S.prepLunch.sound||"beep"]); return; } }
   if(S.prepEvening.on && nowSec===hmSec(S.prepEvening.time)-S.prepEvening.min*60){ lastBellSec=nowSec; if(S.sfx) playCue([S.prepEvening.sound||"beep"]); return; }
 }
 
@@ -678,7 +807,7 @@ overlay.onclick=()=>{ panel.classList.remove("open"); overlay.classList.remove("
 
 /* ===== 유틸 ===== */
 function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
-function maxPeriod(){ let mx=0; S.slots.forEach(s=>{ if(s.type==="class"&&s.no>mx) mx=s.no; }); return mx; }
+function maxPeriod(){ let mx=0; editSlots().forEach(s=>{ if(s.type==="class"&&s.no>mx) mx=s.no; }); return mx; }
 function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 function downloadJSON(obj,name){ const blob=new Blob([JSON.stringify(obj)],{type:"application/json"}); const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
 function opt(val,label,selected){ return '<option value="'+esc(val)+'"'+(selected===val?" selected":"")+'>'+esc(label)+'</option>'; }
@@ -746,8 +875,24 @@ function bindSettings(){
   $("#prepEveTest").onclick=()=>playCue([S.prepEvening.sound||"beep"]);
   renderBellUI(); renderCues(); renderAutoTable();
 
-  $("#addCue").onclick=()=>{ S.cues.push({id:"c"+Date.now(), label:"새 시보", time:"09:00", days:[1,2,3,4,5], sounds:[], on:true}); renderCues(); saveStore(); };
-  $("#addSlot").onclick=()=>{ S.slots.push({type:"class",no:maxPeriod()+1,start:"16:15",end:"17:00"}); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+  /* 요일별 시정표 켜기/끄기 */
+  $("#perDayTgl").checked=S.perDaySlots;
+  $("#perDayTgl").onchange=e=>{
+    S.perDaySlots=e.target.checked;
+    if(S.perDaySlots){
+      const any=WEEKDAYS.some(d=>hasOwnSlots(d));
+      if(!any && confirm("지금 시정표를 월~금 다섯 요일에 복사해 두고 시작할까요?\n\n[확인] 요일마다 바로 고칠 수 있게 복사\n[취소] 필요한 요일만 나중에 따로 만들기")){
+        WEEKDAYS.forEach(d=>{ S.daySlots[d]=JSON.parse(JSON.stringify(S.slots)); });
+      }
+    }
+    refreshTimetableUI(); saveStore();
+  };
+
+  $("#addCue").onclick=()=>{ S.cues.push({id:"c"+Date.now(), label:"새 시보", time:"09:00", days:[1,2,3,4,5], sounds:[], on:true, perDay:false, daySounds:{0:[],1:[],2:[],3:[],4:[],5:[],6:[]}}); renderCues(); saveStore(); };
+  $("#addSlot").onclick=()=>{ editSlots().push({type:"class",no:maxPeriod()+1,start:"16:15",end:"17:00"}); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); renderWdTabs(); saveStore(); };
+  $("#wkEditToggle").onclick=()=>{ wkEditing=!wkEditing; renderWeekPresets(); };
+  renderWeekPresets();
+
   $("#resetAll").onclick=()=>{ if(confirm("모든 설정을 기본값으로 되돌릴까요? (음원 보관함도 함께 지워집니다)")){ try{localStorage.removeItem(KEY);}catch(e){} S.sounds.forEach(s=>{try{idbDel(s.id);}catch(e){}}); location.reload(); } };
 
   $("#tplSave").onclick=()=>{ const n=$("#tplName").value.trim()||("템플릿 "+(S.templates.length+1)); S.templates.push({name:n, data:snapshotTemplate()}); $("#tplName").value=""; renderTemplates(); saveGuard(); };
@@ -775,8 +920,11 @@ function renderBellUI(){
       if(S.timerSound===s.id) S.timerSound="beep"; if(S.bellSound===s.id) S.bellSound="beep";
       if(S.bellStartDefault===s.id) S.bellStartDefault="beep"; if(S.bellEndDefault===s.id) S.bellEndDefault="beep";
       if(S.prepLunch.sound===s.id) S.prepLunch.sound="beep"; if(S.prepEvening.sound===s.id) S.prepEvening.sound="beep";
-      S.slots.forEach(sl=>{ if(sl.bellStart===s.id) sl.bellStart=""; if(sl.bellEnd===s.id) sl.bellEnd=""; });
-      S.cues.forEach(c=>{ c.sounds=(c.sounds||[]).filter(x=>x!==s.id); });
+      allSlotArrays().forEach(arr=>arr.forEach(sl=>{ if(sl.bellStart===s.id) sl.bellStart=""; if(sl.bellEnd===s.id) sl.bellEnd=""; }));
+      S.cues.forEach(c=>{
+        c.sounds=(c.sounds||[]).filter(x=>x!==s.id);
+        for(let d=0;d<7;d++){ if(Array.isArray((c.daySounds||{})[d])) c.daySounds[d]=c.daySounds[d].filter(x=>x!==s.id); }
+      });
       renderBellUI(); renderCues(); saveStore();
     };
     list.appendChild(it);
@@ -790,7 +938,9 @@ function renderBellUI(){
 }
 function renderBellPerPeriod(){
   const el=$("#bellPerPeriod"); el.innerHTML='<div class="bphead"><span></span><span>시작종</span><span>끝종</span></div>';
-  const classes=S.slots.filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
+  const tag=$("#bellDayTag");
+  if(tag) tag.textContent = S.perDaySlots ? ("· "+WD[editWd]+"요일") : "";
+  const classes=editSlots().filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
   classes.forEach(s=>{
     const sv=s.bellStart||"", ev=s.bellEnd||"";
     const row=document.createElement("div"); row.className="bprow";
@@ -821,28 +971,80 @@ function renderCues(){
     ["일","월","화","수","목","금","토"].forEach((d,idx)=>{ const b=document.createElement("button"); b.className="daychip"+(c.days.includes(idx)?" on":""); b.textContent=d;
       b.onclick=()=>{ if(c.days.includes(idx)) c.days=c.days.filter(x=>x!==idx); else c.days.push(idx); renderCues(); saveStore(); }; days.appendChild(b); });
     box.appendChild(days);
-    const seq=document.createElement("div"); seq.className="cueseq";
-    if(!c.sounds.length){ const p=document.createElement("div"); p.className="footer-note"; p.textContent="재생할 음원을 추가하세요 (위→아래 순서로 재생)."; seq.appendChild(p); }
-    c.sounds.forEach((sid,si)=>{
-      const it=document.createElement("div"); it.className="seqitem";
-      it.innerHTML='<span class="idx">'+(si+1)+'</span><select>'+soundSelectHTML(sid,false,false)+'</select><button class="linkbtn">✕</button>';
-      const selc=it.querySelector("select"), rm=it.querySelector("button");
-      selc.onchange=()=>{ c.sounds[si]=selc.value; saveStore(); };
-      rm.onclick=()=>{ c.sounds.splice(si,1); renderCues(); saveStore(); };
-      seq.appendChild(it);
-    });
-    box.appendChild(seq);
-    const act=document.createElement("div"); act.className="cueactions";
-    act.innerHTML='<button class="btn mini" data-a="add">+ 음원 추가</button><button class="btn mini" data-a="play">▶ 미리듣기</button>';
-    act.querySelector('[data-a="add"]').onclick=()=>{ c.sounds.push(S.sounds.length?S.sounds[0].id:"beep"); renderCues(); saveStore(); };
-    act.querySelector('[data-a="play"]').onclick=()=>{ unlockAudio(); playCue(c.sounds.slice()); };
-    box.appendChild(act);
+
+    /* 요일별 음원 사용 여부 */
+    if(!c.daySounds || typeof c.daySounds!=="object") c.daySounds={};
+    for(let d=0;d<7;d++){ if(!Array.isArray(c.daySounds[d])) c.daySounds[d]=[]; }
+    const pdRow=document.createElement("div"); pdRow.className="field"; pdRow.style.cssText="border:none; padding:2px 0 6px;";
+    pdRow.innerHTML='<div><div class="name">요일별 다른 음원</div><div class="hint">월·화·수·목·금마다 다른 방송 파일 재생</div></div>'+
+                    '<label class="switch"><input type="checkbox" '+(c.perDay?"checked":"")+'><span class="track"><span class="knob"></span></span></label>';
+    pdRow.querySelector('input[type="checkbox"]').onchange=ev=>{
+      c.perDay=ev.target.checked;
+      if(c.perDay){
+        const empty=[0,1,2,3,4,5,6].every(d=>!c.daySounds[d].length);
+        if(empty && c.sounds.length) c.days.forEach(d=>{ c.daySounds[d]=c.sounds.slice(); });
+      }
+      renderCues(); saveStore();
+    };
+    box.appendChild(pdRow);
+
+    /* 하나의 음원 시퀀스를 그리는 헬퍼 (list = 대상 배열) */
+    const buildSeq=(list, onChange)=>{
+      const seq=document.createElement("div"); seq.className="cueseq";
+      if(!list.length){ const p=document.createElement("div"); p.className="footer-note"; p.textContent="재생할 음원을 추가하세요 (위→아래 순서로 재생)."; seq.appendChild(p); }
+      list.forEach((sid,si)=>{
+        const it=document.createElement("div"); it.className="seqitem";
+        it.innerHTML='<span class="idx">'+(si+1)+'</span><select>'+soundSelectHTML(sid,false,false)+'</select><button class="linkbtn">✕</button>';
+        const selc=it.querySelector("select"), rm=it.querySelector("button");
+        selc.onchange=()=>{ list[si]=selc.value; saveStore(); };
+        rm.onclick=()=>{ list.splice(si,1); onChange(); saveStore(); };
+        seq.appendChild(it);
+      });
+      return seq;
+    };
+    const addBtnRow=(list, label)=>{
+      const act=document.createElement("div"); act.className="cueactions";
+      act.innerHTML='<button class="btn mini" data-a="add">+ 음원 추가</button><button class="btn mini" data-a="play">▶ 미리듣기</button>';
+      act.querySelector('[data-a="add"]').onclick=()=>{ list.push(S.sounds.length?S.sounds[0].id:"beep"); renderCues(); saveStore(); };
+      act.querySelector('[data-a="play"]').onclick=()=>{ unlockAudio(); if(list.length) playCue(list.slice()); else alert((label||"이 시보")+"에 등록된 음원이 없습니다."); };
+      return act;
+    };
+
+    if(!c.perDay){
+      box.appendChild(buildSeq(c.sounds, renderCues));
+      box.appendChild(addBtnRow(c.sounds));
+    } else {
+      const active=c.days.slice().sort((a,b)=>((a+6)%7)-((b+6)%7));
+      if(!active.length){
+        const p=document.createElement("div"); p.className="footer-note";
+        p.textContent="위에서 방송할 요일을 먼저 선택하세요.";
+        box.appendChild(p);
+      }
+      active.forEach(d=>{
+        const blk=document.createElement("div"); blk.className="dayblock";
+        const head=document.createElement("div"); head.className="dhead";
+        const cnt=c.daySounds[d].length;
+        head.innerHTML='<span class="dname">'+WD[d]+'요일<i>'+(cnt?(cnt+"개"):"비어 있음")+'</i></span>';
+        const acts=document.createElement("div"); acts.className="dacts";
+        const copyBtn=document.createElement("button"); copyBtn.className="btn mini"; copyBtn.textContent="전체 요일에 복사";
+        copyBtn.onclick=()=>{
+          if(!c.daySounds[d].length) return alert(WD[d]+"요일에 등록된 음원이 없습니다.");
+          if(!confirm(WD[d]+"요일 음원 구성을 선택한 모든 요일에 복사할까요?")) return;
+          c.days.forEach(x=>{ c.daySounds[x]=c.daySounds[d].slice(); });
+          renderCues(); saveStore();
+        };
+        acts.appendChild(copyBtn); head.appendChild(acts); blk.appendChild(head);
+        blk.appendChild(buildSeq(c.daySounds[d], renderCues));
+        blk.appendChild(addBtnRow(c.daySounds[d], WD[d]+"요일"));
+        box.appendChild(blk);
+      });
+    }
     el.appendChild(box);
   });
 }
 
 /* ===== 템플릿 ===== */
-const TPL_KEYS=["slots","subjects","ann","theme","background","showSec","h24","bellAuto","bellSound","timerSound","prepLunch","prepEvening","cues"];
+const TPL_KEYS=["slots","daySlots","perDaySlots","subjects","ann","theme","background","showSec","h24","bellAuto","bellSound","bellStartDefault","bellEndDefault","timerSound","prepLunch","prepEvening","cues","autoTable"];
 function snapshotTemplate(){ const d={}; TPL_KEYS.forEach(k=>{ d[k]=JSON.parse(JSON.stringify(S[k])); }); return d; }
 function applyTemplate(data){ TPL_KEYS.forEach(k=>{ if(data[k]!==undefined) S[k]=JSON.parse(JSON.stringify(data[k])); }); }
 function renderTemplates(){
@@ -851,12 +1053,97 @@ function renderTemplates(){
   S.templates.forEach((t,i)=>{
     const it=document.createElement("div"); it.className="titem";
     it.innerHTML='<span class="tname">'+esc(t.name)+'</span><span style="display:flex;gap:6px;"><button class="btn mini primary" data-a="use">적용</button><button class="btn mini" data-a="exp">내보내기</button><button class="btn mini ghost" data-a="del">🗑</button></span>';
-    it.querySelector('[data-a="use"]').onclick=()=>{ applyTemplate(t.data); applyLook(); renderWdTabs(); renderSubjectEditor(); renderSlotEditor(); renderAnnEditor(); renderAnnounce(); renderBellUI(); renderCues(); bindLookInputs(); saveStore(); };
+    it.querySelector('[data-a="use"]').onclick=()=>{ applyTemplate(t.data); normalizeState(); applyLook(); refreshTimetableUI(); renderAnnEditor(); renderAnnounce(); renderCues(); bindLookInputs(); saveStore(); };
     it.querySelector('[data-a="exp"]').onclick=()=>downloadJSON({name:t.name,data:t.data,_type:"dure-template"},"두레HUD_"+t.name+".json");
     it.querySelector('[data-a="del"]').onclick=()=>{ S.templates.splice(i,1); renderTemplates(); saveStore(); };
     el.appendChild(it);
   });
 }
+/* ===== 주간 템플릿 (6칸) =====
+   한 주의 요일별 시정표·과목·시보·종소리 설정을 통째로 담습니다.
+   음원 파일 자체가 아니라 음원 ID만 담기므로, 보관함의 음원은 그대로 공유됩니다. */
+const WEEK_KEYS=["perDaySlots","daySlots","slots","subjects","cues","bellAuto","bellStartDefault","bellEndDefault","prepLunch","prepEvening","autoTable"];
+function snapshotWeek(){ const d={}; WEEK_KEYS.forEach(k=>{ d[k]=JSON.parse(JSON.stringify(S[k])); }); return d; }
+function applyWeek(data){
+  WEEK_KEYS.forEach(k=>{ if(data[k]!==undefined) S[k]=JSON.parse(JSON.stringify(data[k])); });
+  normalizeState();
+}
+function weekSummary(data){
+  if(!data) return "비어 있음";
+  const parts=[];
+  if(data.perDaySlots){
+    const n=WEEKDAYS.filter(d=>Array.isArray((data.daySlots||{})[d]) && data.daySlots[d].length).length;
+    parts.push(n ? ("요일별 "+n+"일") : "요일별");
+  } else {
+    const n=(data.slots||[]).filter(s=>s.type==="class").length;
+    parts.push(n ? (n+"교시 공통") : "공통");
+  }
+  const cn=(data.cues||[]).filter(c=>c.on).length;
+  if(cn) parts.push("시보 "+cn);
+  return parts.join(" · ");
+}
+let wkEditing=false;
+function renderWeekPresets(){
+  const el=$("#weekPresets"); if(!el) return;
+  el.className="wkgrid"+(wkEditing?" editing":"");
+  el.innerHTML="";
+  S.weekPresets.forEach((p,i)=>{
+    const card=document.createElement("div");
+    card.className="wkcard"+(p.data?"":" empty")+(S.activePreset===i&&p.data?" on":"");
+    card.innerHTML='<span class="wkdot"></span><span class="wkno">'+(i+1)+'</span>'+
+                   '<span class="wkname">'+esc(p.name)+'</span>'+
+                   '<span class="wkmeta">'+esc(weekSummary(p.data))+'</span>';
+    if(!wkEditing){
+      card.onclick=()=>{
+        if(!p.data){
+          if(!confirm('"'+p.name+'" 칸에 지금 설정(요일별 시정표·과목·시보)을 저장할까요?')) return;
+          p.data=snapshotWeek(); p.savedAt=new Date().toISOString().slice(0,10);
+          S.activePreset=i; renderWeekPresets(); saveGuard(); return;
+        }
+        if(S.activePreset===i && !confirm('"'+p.name+'"을(를) 다시 적용할까요?')) return;
+        if(S.activePreset!==i && !confirm('"'+p.name+'" 주간 설정을 적용할까요?\n\n지금의 요일별 시정표·과목·시보 설정이 이 템플릿 내용으로 바뀝니다.\n(음원 보관함·색상·배경은 그대로예요)')) return;
+        applyWeek(p.data);
+        S.activePreset=i;
+        refreshTimetableUI(); renderCues(); bindLookInputs(); renderWeekPresets(); saveGuard();
+        showToast("#weekToast", 3200);
+        $("#weekToastName").textContent=p.name;
+      };
+    } else {
+      const acts=document.createElement("div"); acts.className="wkacts";
+      const mk=(label,cls,fn)=>{ const b=document.createElement("button"); if(cls) b.className=cls; b.textContent=label; b.onclick=ev=>{ ev.stopPropagation(); fn(); }; acts.appendChild(b); };
+      mk("이름","",()=>{
+        const n=prompt("템플릿 이름", p.name);
+        if(n===null) return;
+        p.name=n.trim()||DEFAULT_WEEK_NAMES[i];
+        renderWeekPresets(); saveGuard();
+      });
+      mk(p.data?"덮어쓰기":"저장","acc",()=>{
+        if(p.data && !confirm('"'+p.name+'"을(를) 지금 설정으로 덮어쓸까요?')) return;
+        p.data=snapshotWeek(); p.savedAt=new Date().toISOString().slice(0,10);
+        S.activePreset=i; renderWeekPresets(); saveGuard();
+      });
+      if(p.data) mk("비우기","",()=>{
+        if(!confirm('"'+p.name+'" 칸을 비울까요?')) return;
+        p.data=null; p.savedAt="";
+        if(S.activePreset===i) S.activePreset=-1;
+        renderWeekPresets(); saveGuard();
+      });
+      card.appendChild(acts);
+    }
+    el.appendChild(card);
+  });
+  const note=$("#wkNote");
+  if(note){
+    const cur=S.weekPresets[S.activePreset];
+    note.innerHTML = wkEditing
+      ? "이름을 바꾸거나, 지금 설정을 칸에 저장하거나, 칸을 비울 수 있어요. 끝나면 [완료]를 누르세요."
+      : (cur && cur.data
+          ? '마지막으로 적용한 주간: <b style="color:var(--neon)">'+esc(cur.name)+'</b>'+(cur.savedAt?' · '+esc(cur.savedAt)+' 저장':'')+'<br>적용 후 시정표를 손으로 고쳤다면 [편집 → 덮어쓰기]로 다시 저장하세요.'
+          : "비어 있는 칸은 눌러서 지금 설정을 그대로 저장할 수 있어요. 이름은 [편집]에서 바꿉니다.");
+  }
+  const tg=$("#wkEditToggle"); if(tg) tg.textContent = wkEditing ? "완료" : "편집";
+}
+
 function bindLookInputs(){
   $("#accentColor").value=S.theme.accent; $("#clockColor").value=S.theme.clock; $("#infoColor").value=S.theme.info;
   $("#bgMode").value=S.background.mode; $("#bgColor1").value=S.background.color1; $("#bgColor2").value=S.background.color2; $("#bgOpacity").value=S.background.opacity;
@@ -879,11 +1166,28 @@ function renderAutoTable(){
   $("#atPeriods").onchange=e=>{ a.periods=Math.max(1,Math.min(14,parseInt(e.target.value)||1)); if((a.lunchAfter||0)>a.periods) a.lunchAfter=0; renderAutoTable(); saveStore(); };
   $("#atLunchAfter").onchange=e=>{ a.lunchAfter=parseInt(e.target.value)||0; saveStore(); };
   $("#atLunchMin").onchange=e=>{ a.lunchMin=Math.max(0,parseInt(e.target.value)||0); saveStore(); };
+  const allBtn=$("#atGenAll");
+  allBtn.style.display = S.perDaySlots ? "" : "none";
+  $("#atGen").textContent = S.perDaySlots ? ("자동 배치 ("+WD[editWd]+")") : "자동 배치";
   $("#atGen").onclick=()=>{
-    if(!confirm("현재 교시 시간표를 자동 배치로 덮어쓸까요? (과목명·종소리 설정은 유지됩니다)")) return;
-    S.slots=autoBuildSlots(a);
-    renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore();
+    const target = S.perDaySlots ? (WD[editWd]+"요일 시정표를") : "현재 교시 시간표를";
+    if(!confirm(target+" 자동 배치로 덮어쓸까요? (과목명·종소리 설정은 유지됩니다)")) return;
+    if(S.perDaySlots) S.daySlots[editWd]=autoBuildSlots(a);
+    else S.slots=autoBuildSlots(a);
+    refreshTimetableUI(); saveStore();
   };
+  allBtn.onclick=()=>{
+    if(!confirm("월~금 다섯 요일 시정표를 모두 이 설정으로 덮어쓸까요?")) return;
+    WEEKDAYS.forEach(d=>{ S.daySlots[d]=autoBuildSlots(a); });
+    refreshTimetableUI(); saveStore();
+  };
+}
+
+/* 시정표 관련 UI 한 번에 새로고침 */
+function refreshTimetableUI(){
+  const pd=$("#perDayTgl"); if(pd) pd.checked=!!S.perDaySlots;
+  const ba=$("#bellAutoTgl"); if(ba) ba.checked=!!S.bellAuto;
+  renderWdTabs(); renderDayOps(); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); renderAutoTable();
 }
 
 /* ===== 화면 꽉 채우기 ===== */
@@ -905,10 +1209,72 @@ function fillScreen(){
 
 /* ===== 시정표 편집 ===== */
 let editWd=1;
-function renderWdTabs(){ const el=$("#wdtabs"); el.innerHTML=""; [1,2,3,4,5].forEach(w=>{ const b=document.createElement("button"); b.textContent=WD[w]; if(w===editWd) b.classList.add("on"); b.onclick=()=>{ editWd=w; renderWdTabs(); renderSubjectEditor(); }; el.appendChild(b); }); }
+function renderWdTabs(){
+  const el=$("#wdtabs"); el.innerHTML="";
+  WEEKDAYS.forEach(w=>{
+    const b=document.createElement("button");
+    const own=hasOwnSlots(w);
+    b.innerHTML=esc(WD[w])+(S.perDaySlots?'<span class="dmark">'+(own?(slotCount(w)+"칸"):"공통")+'</span>':"");
+    if(w===editWd) b.classList.add("on");
+    if(own) b.classList.add("set");
+    b.onclick=()=>{ editWd=w; renderWdTabs(); renderDayOps(); renderSubjectEditor(); renderSlotEditor(); renderBellPerPeriod(); renderAutoTable(); };
+    el.appendChild(b);
+  });
+}
+function slotCount(wd){ return (S.daySlots[wd]||[]).filter(s=>s.type==="class").length; }
+
+/* 요일 안내문 + 요일 복사/비우기 버튼 */
+function renderDayOps(){
+  const note=$("#dayNotice"), ops=$("#dayOps");
+  if(!note||!ops) return;
+  ops.innerHTML="";
+  if(!S.perDaySlots){
+    note.innerHTML='모든 요일이 <b>같은 시정표</b>를 씁니다. 아래에서 교시 시간을 고치면 월~금 전체에 적용돼요. 과목명만 요일별로 다르게 넣을 수 있습니다.';
+    return;
+  }
+  const own=hasOwnSlots(editWd);
+  note.innerHTML= own
+    ? '<b>'+WD[editWd]+'요일</b> 전용 시정표를 편집하고 있습니다. 교시 시간·종소리는 이 요일에만 적용돼요.'
+    : '<b>'+WD[editWd]+'요일</b>은 전용 시정표가 없어 <b>공통 시정표</b>를 씁니다. 지금 교시 시간을 고치면 공통을 쓰는 다른 요일도 함께 바뀌어요. 이 요일만 다르게 하려면 [이 요일 따로 만들기]를 누르세요.';
+
+  const mk=(label, cls, fn)=>{ const b=document.createElement("button"); b.className="btn sm"+(cls?" "+cls:""); b.textContent=label; b.onclick=fn; ops.appendChild(b); };
+
+  if(!own){
+    mk("이 요일 따로 만들기","primary",()=>{
+      S.daySlots[editWd]=JSON.parse(JSON.stringify(S.slots));
+      refreshTimetableUI(); saveStore();
+    });
+  } else {
+    mk("이 요일을 월~금 전체에 복사",null,()=>{
+      if(!confirm(WD[editWd]+"요일 시정표를 월~금 다섯 요일 모두에 복사할까요?")) return;
+      const src=JSON.stringify(S.daySlots[editWd]);
+      WEEKDAYS.forEach(d=>{ S.daySlots[d]=JSON.parse(src); });
+      refreshTimetableUI(); saveStore();
+    });
+    mk("공통 시정표로 되돌리기",null,()=>{
+      if(!confirm(WD[editWd]+"요일 전용 시정표를 지우고 공통 시정표를 쓸까요?")) return;
+      S.daySlots[editWd]=[];
+      refreshTimetableUI(); saveStore();
+    });
+  }
+  const other=WEEKDAYS.filter(d=>d!==editWd && hasOwnSlots(d));
+  if(other.length){
+    const wrap=document.createElement("select");
+    wrap.innerHTML=opt("","다른 요일에서 복사…","")+other.map(d=>opt(String(d),WD[d]+"요일 복사","")).join("");
+    wrap.onchange=()=>{
+      const d=parseInt(wrap.value); wrap.value="";
+      if(!d) return;
+      if(!confirm(WD[d]+"요일 시정표를 "+WD[editWd]+"요일로 복사할까요?")) return;
+      S.daySlots[editWd]=JSON.parse(JSON.stringify(S.daySlots[d]));
+      refreshTimetableUI(); saveStore();
+    };
+    ops.appendChild(wrap);
+  }
+}
+
 function renderSubjectEditor(){
   const el=$("#subjectEditor"); el.innerHTML="";
-  const classes=S.slots.filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
+  const classes=editSlots().filter(s=>s.type==="class").sort((a,b)=>a.no-b.no);
   if(!S.subjects[editWd]) S.subjects[editWd]={};
   classes.forEach(c=>{
     const info=S.subjects[editWd][c.no]||{name:"",move:false};
@@ -921,15 +1287,17 @@ function renderSubjectEditor(){
 }
 function renderSlotEditor(){
   const el=$("#slotEditor"); el.innerHTML="";
-  S.slots.sort((a,b)=>hm(a.start)-hm(b.start));
-  S.slots.forEach((s,idx)=>{
+  const arr=editSlots();
+  arr.sort((a,b)=>hm(a.start)-hm(b.start));
+  if(!arr.length){ el.innerHTML='<div class="footer-note">등록된 칸이 없습니다. "+ 칸"으로 교시를 추가하거나 위에서 자동 배치를 눌러 보세요.</div>'; }
+  arr.forEach((s,idx)=>{
     const row=document.createElement("div"); row.className="timerow";
     row.innerHTML='<select><option value="class"'+(s.type==="class"?" selected":"")+'>수업</option><option value="break"'+(s.type==="break"?" selected":"")+'>쉬는시간</option><option value="lunch"'+(s.type==="lunch"?" selected":"")+'>점심</option></select><input type="time" value="'+s.start+'"><input type="time" value="'+s.end+'"><button class="linkbtn" title="삭제">✕</button>';
     const sel=row.querySelector("select"), times=row.querySelectorAll('input[type="time"]'), del=row.querySelector("button");
-    sel.onchange=()=>{ s.type=sel.value; if(s.type==="class"&&!s.no) s.no=maxPeriod()+1; if(s.type!=="class") delete s.no; renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+    sel.onchange=()=>{ s.type=sel.value; if(s.type==="class"&&!s.no) s.no=maxPeriod()+1; if(s.type!=="class") delete s.no; renderSlotEditor(); renderSubjectEditor(); renderBellUI(); renderWdTabs(); saveStore(); };
     times[0].onchange=()=>{ s.start=times[0].value; saveStore(); };
     times[1].onchange=()=>{ s.end=times[1].value; saveStore(); };
-    del.onclick=()=>{ S.slots.splice(idx,1); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); saveStore(); };
+    del.onclick=()=>{ arr.splice(idx,1); renderSlotEditor(); renderSubjectEditor(); renderBellUI(); renderWdTabs(); saveStore(); };
     el.appendChild(row);
   });
 }
@@ -945,7 +1313,7 @@ function renderAnnEditor(){
 }
 
 /* ===== 시작 ===== */
-function reinit(){ applyLook(); bindSettings(); renderWdTabs(); renderSubjectEditor(); renderSlotEditor(); renderAnnEditor(); renderAnnounce(); renderControls(); if(S.pin) $("#pinBtn").style.color=S.theme.accent; render(new Date()); }
+function reinit(){ normalizeState(); applyLook(); bindSettings(); renderWdTabs(); renderDayOps(); renderSubjectEditor(); renderSlotEditor(); renderAnnEditor(); renderAnnounce(); renderControls(); renderWeekPresets(); if(S.pin) $("#pinBtn").style.color=S.theme.accent; render(new Date()); }
 async function migrateSounds(){
   let changed=false;
   for(const s of S.sounds){
@@ -972,7 +1340,7 @@ async function boot(){
 /* ==================================================================
    PWA · 오프라인 · 화면 꺼짐 방지 · 전체 백업
    ================================================================== */
-const APP_VERSION="1.0.0";
+const APP_VERSION="1.1.0";
 
 /* ---------- 토스트 ---------- */
 let toastTimer=null;
