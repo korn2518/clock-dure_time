@@ -259,6 +259,14 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
   background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.1); border-radius:7px; padding:4px 2px;}
 .bellpick .premin:focus{outline:none; border-color:#ffb02e;}
 .bellpick .bunit{font-size:10px; color:var(--muted); flex:0 0 auto;}
+.slotnote{font-size:10.5px; color:var(--muted); margin-top:7px; padding-top:7px; border-top:1px solid rgba(255,255,255,.06); line-height:1.5;}
+.defsum{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 10px;}
+.defchip{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; letter-spacing:-.2px;
+  padding:5px 9px; border-radius:999px; color:var(--muted); background:rgba(255,255,255,.05); border:1px solid var(--card-line); max-width:100%;}
+.defchip i{font-style:normal; font-size:9.5px; font-weight:800; opacity:.7;}
+.defchip.set{color:var(--neon); background:rgba(var(--neon-rgb),.12); border-color:rgba(var(--neon-rgb),.35);}
+.defchip.set i{color:var(--muted);}
+.defchip.pre.set{color:#ffd27a; background:rgba(255,180,60,.14); border-color:rgba(255,180,60,.35);}
 .tt .prechip{align-self:center; font-size:8.5px; font-weight:800; line-height:1; padding:2px 5px; border-radius:5px; margin-bottom:-1px;
   color:#ffd27a; background:rgba(255,180,60,.18); border:1px solid rgba(255,180,60,.4); font-variant-numeric:tabular-nums; white-space:nowrap;}
 .fixrow{display:flex; align-items:center; gap:7px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); flex-wrap:wrap;
@@ -367,6 +375,8 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
 .toast .acts{display:flex; gap:6px; flex-shrink:0;}
 .toast .btn{padding:7px 12px; font-size:12.5px;}
 .toast.ok .ico{background:rgba(80,240,180,.14); border-color:rgba(80,240,180,.4);}
+.toast.warn-toast .ico{background:rgba(255,180,60,.16); border-color:rgba(255,180,60,.45);}
+.toast.warn-toast{border-color:rgba(255,180,60,.35);}
 
 #netPill{position:fixed; top:14px; right:14px; z-index:70; display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
   font-size:12px; font-weight:800; letter-spacing:-.2px; color:#ffcf70; background:rgba(255,180,60,.12); border:1px solid rgba(255,180,60,.32);
@@ -407,6 +417,27 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
     <button class="btn primary sm" id="updateGo">새로고침</button>
     <button class="btn ghost sm" id="updateNo">나중에</button>
   </div>
+</div>
+
+<div class="toast warn-toast" id="audioToast">
+  <div class="ico">🔇</div>
+  <div class="txt"><b>소리가 잠겨 있어요</b><span>브라우저 정책 때문에 화면을 한 번 눌러야 종소리가 나갑니다. 아래 버튼을 누르면 바로 풀립니다.</span></div>
+  <div class="acts">
+    <button class="btn primary sm" id="audioUnlockGo">소리 켜기</button>
+    <button class="btn ghost sm" id="audioUnlockNo">닫기</button>
+  </div>
+</div>
+
+<div class="toast warn-toast" id="audioErrToast">
+  <div class="ico">⚠️</div>
+  <div class="txt"><b>재생 문제</b><span>—</span></div>
+  <div class="acts"><button class="btn ghost sm" onclick="this.closest('.toast').classList.remove('show')">확인</button></div>
+</div>
+
+<div class="toast ok" id="assignToast">
+  <div class="ico">🔔</div>
+  <div class="txt"><b>기본 종소리를 자동으로 지정했어요</b><span id="assignToastMsg">—</span></div>
+  <div class="acts"><button class="btn ghost sm" onclick="this.closest('.toast').classList.remove('show')">확인</button></div>
 </div>
 
 <div class="toast ok" id="weekToast">
@@ -472,6 +503,8 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
       <label class="switch"><input type="checkbox" id="wakeTgl"><span class="track"><span class="knob"></span></span></label></div>
     <div class="field"><div><div class="name">오프라인 자료 다시 받기</div><div class="hint">글꼴·아이콘을 다시 저장해 오프라인 동작을 보강</div></div>
       <button class="btn sm" id="recacheBtn">다시 받기</button></div>
+    <div class="field"><div><div class="name">소리 테스트</div><div class="hint">지금 종소리가 실제로 나가는지 바로 확인 (아침에 한 번 눌러 두세요)</div></div>
+      <button class="btn sm" id="audioTest">🔊 소리 켜고 테스트</button></div>
     <div class="field" style="border:none;"><div><div class="name">업데이트 확인</div><div class="hint" id="verHint">버전 확인 중…</div></div>
       <button class="btn sm" id="updateCheck">확인</button></div>
     <div class="footer-note">📶 인터넷이 없어도 시계·시정표·종소리·타이머가 모두 동작합니다. 저장해 둔 음원도 그대로 재생돼요.</div>
@@ -524,11 +557,15 @@ input[type="range"]{width:130px; accent-color:var(--neon);}
   <div class="section">
     <span class="label">🔔 종소리 · 음원 아카이브</span>
     <div class="hint" style="margin-bottom:8px;">종소리·기상송·녹음 방송을 <b>원하는 만큼</b> 넣어 두고, 아래 시정표의 <b>칸마다 골라서</b> 쓰세요.
-      한 번에 여러 파일을 선택할 수 있고 대용량(수십 MB)도 이 PC에 저장됩니다. 이름을 눌러 바꿀 수 있어요.</div>
+      한 번에 여러 파일을 선택할 수 있고 대용량(수십 MB)도 이 PC에 저장됩니다. 이름을 눌러 바꿀 수 있어요.<br>
+      💡 파일 이름에 <b>시작 · 끝 · 예비 · 기상</b> 같은 낱말이 들어 있으면 <b>올리는 순간 기본 종소리로 자동 지정</b>됩니다.
+      칸에서 따로 고르지 않은 곳은 모두 이 기본 종소리를 씁니다.</div>
     <div id="idbWarn"></div>
+    <div class="defsum" id="defSummary"></div>
     <div class="field" style="border:none; padding:2px 0 8px;">
       <div class="val" style="gap:6px; flex-wrap:wrap;">
         <button class="btn sm primary" id="addSound">+ 음원 파일 추가</button>
+        <button class="btn sm" id="autoAssign">🔔 기본 종소리 자동 지정</button>
         <button class="btn sm" id="playAllSounds">▶ 모두 미리듣기</button>
       </div>
       <div class="val" style="gap:8px;">
@@ -984,29 +1021,147 @@ function computeStatus(now){
 }
 function fmtRemain(sec){ if(sec==null) return ""; const m=Math.floor(sec/60),s=sec%60; return m+":"+pad(s); }
 
-/* ===== 오디오 ===== */
-let AC=null, audioUnlocked=false;
+/* ===== 오디오 =====
+   브라우저는 "사용자가 한 번 만져야" 소리를 내줍니다.
+   한 번 열어 둔 <audio> 하나를 계속 재사용하고, 어떤 클릭·키 입력에서든 잠금을 풀도록 했습니다. */
+const SILENT_WAV="data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAAAAAAAAAAAAAAAAAAAAAAAA";
+let AC=null, audioUnlocked=false, audioPlayer=null, lockNoticeShown=false;
 function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
-function unlockAudio(){ if(audioUnlocked) return; audioUnlocked=true; const c=ac(); if(c&&c.state==="suspended") c.resume(); }
+
+/* 재생에 쓰는 오디오 요소 하나 — 매번 새로 만들지 않습니다 */
+function getPlayer(){
+  if(!audioPlayer){
+    audioPlayer=document.createElement("audio");
+    audioPlayer.id="bcPlayer";
+    audioPlayer.preload="auto";
+    audioPlayer.setAttribute("playsinline","");
+    document.body.appendChild(audioPlayer);
+  }
+  return audioPlayer;
+}
+function audioReady(){
+  const c=AC;
+  return audioUnlocked || (c && c.state==="running");
+}
+/* 사용자 동작이 있을 때마다 호출 — 이미 풀렸으면 아무 일도 하지 않습니다 */
+function unlockAudio(){
+  const c=ac();
+  if(c && c.state==="suspended"){ try{ c.resume().then(syncAudioChip).catch(()=>{}); }catch(e){} }
+  if(audioUnlocked){ syncAudioChip(); return; }
+  const p=getPlayer();
+  try{
+    p.muted=true; p.src=SILENT_WAV;
+    const pr=p.play();
+    if(pr && pr.then){
+      pr.then(()=>{
+        try{ p.pause(); }catch(e){}
+        p.muted=false; p.removeAttribute("src"); try{ p.load(); }catch(e){}
+        audioUnlocked=true; hideToast("#audioToast"); syncAudioChip();
+      }).catch(()=>{ p.muted=false; });
+    } else { p.muted=false; audioUnlocked=true; syncAudioChip(); }
+  }catch(e){ p.muted=false; }
+}
+/* 소리가 막혀 있을 때 딱 한 번 크게 알립니다 */
+function noticeAudioLocked(){
+  syncAudioChip();
+  if(lockNoticeShown) return;
+  lockNoticeShown=true;
+  showToast("#audioToast");
+}
+function syncAudioChip(){ try{ renderAppStat(); }catch(e){} }
 function beep(freq,dur,when,vol){ const c=ac(); if(!c) return; const o=c.createOscillator(),g=c.createGain(); o.type="sine"; o.frequency.value=freq; o.connect(g); g.connect(c.destination); const t=c.currentTime+when; const v=(vol!=null?vol:0.18)*S.volume; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+0.02); }
 function beepChime(){ beep(880,0.12,0); beep(1174,0.14,0.09); }
 function beepAlarm(){ for(let i=0;i<3;i++){ beep(1046,0.16,i*0.28,0.2); beep(784,0.16,i*0.28+0.14,0.2); } }
 function speak(text){ if(!S.voice) return; try{ const u=new SpeechSynthesisUtterance(text); u.lang="ko-KR"; u.rate=S.voiceRate; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }
 function chime(){ if(!S.sfx) return; unlockAudio(); beepChime(); }
 
-/* 순차 재생(방송) 플레이어 */
-let bcQueue=[], curAudio=null, broadcasting=false;
+/* ===== 순차 재생(방송) 플레이어 =====
+   · 오디오 요소 하나를 계속 재사용 (브라우저 자동재생 잠금을 덜 탑니다)
+   · 음원이 아직 메모리에 없으면 저장소에서 꺼내 옵니다
+   · 소리가 막혔거나 파일이 깨졌으면 조용히 넘기지 않고 화면에 알립니다 */
+let bcQueue=[], broadcasting=false, playToken=0;
 function updateBC(name){ const bar=$("#broadcastBar"); if(!bar) return; if(broadcasting){ bar.classList.add("show"); $("#bcName").textContent=name||"방송 재생 중…"; } else bar.classList.remove("show"); }
-function stopBroadcast(){ bcQueue=[]; if(curAudio){ curAudio.onended=null; curAudio.onerror=null; try{curAudio.pause();}catch(e){} curAudio=null; } broadcasting=false; updateBC(); }
-function playCue(ids){ unlockAudio(); stopBroadcast(); bcQueue=(ids||[]).filter(x=>x&&x!=="none"); if(!bcQueue.length) return; broadcasting=true; stepBroadcast(); }
-function stepBroadcast(){
+function stopBroadcast(){
+  playToken++;
+  bcQueue=[];
+  const p=audioPlayer;
+  if(p){ p.onended=null; p.onerror=null; try{ p.pause(); }catch(e){} }
+  broadcasting=false; updateBC();
+}
+/* 음원 주소를 확보 — 없으면 저장소(IndexedDB)에서 다시 꺼냅니다 */
+async function ensureUrl(id){
+  if(urlCache[id]) return urlCache[id];
+  if(!idbOK) return null;
+  try{
+    const blob=await idbGet(id);
+    if(blob){ urlCache[id]=URL.createObjectURL(blob); return urlCache[id]; }
+  }catch(e){ console.warn("음원 불러오기 실패", id, e); }
+  return null;
+}
+function playCue(ids){
+  unlockAudio();
+  stopBroadcast();
+  bcQueue=(ids||[]).filter(x=>x&&x!=="none");
+  if(!bcQueue.length) return;
+  broadcasting=true;
+  stepBroadcast(playToken);
+}
+async function stepBroadcast(token){
+  if(token!==playToken) return;                     /* 그 사이 정지되었으면 그만 */
   if(!bcQueue.length){ broadcasting=false; updateBC(); return; }
   const id=bcQueue.shift();
-  if(id==="beep"){ beepChime(); broadcasting=true; updateBC("알림음"); setTimeout(stepBroadcast,460); return; }
-  const url=urlCache[id]; const s=S.sounds.find(x=>x.id===id);
-  if(!url){ beepChime(); setTimeout(stepBroadcast,460); return; }
-  try{ curAudio=new Audio(url); curAudio.volume=S.volume; curAudio.onended=stepBroadcast; curAudio.onerror=stepBroadcast; broadcasting=true; updateBC(s?s.name:"재생 중"); curAudio.play().catch(()=>setTimeout(stepBroadcast,300)); }
-  catch(e){ setTimeout(stepBroadcast,300); }
+  const next=()=>{ if(token===playToken) stepBroadcast(token); };
+
+  /* 기본 벨 — 오실레이터로 직접 냅니다 */
+  if(id==="beep"){
+    if(!audioReady()) noticeAudioLocked();
+    beepChime(); broadcasting=true; updateBC("기본 벨");
+    setTimeout(next,460);
+    return;
+  }
+
+  const s=S.sounds.find(x=>x.id===id);
+  const url=await ensureUrl(id);
+  if(token!==playToken) return;
+
+  if(!url){
+    console.warn("음원을 찾을 수 없습니다:", id);
+    showAudioProblem(s ? ("'"+s.name+"' 음원을 불러오지 못했습니다.") : "삭제된 음원이 지정되어 있습니다.");
+    beepChime(); setTimeout(next,460);
+    return;
+  }
+
+  const p=getPlayer();
+  try{
+    p.onended=null; p.onerror=null;
+    p.muted=false;
+    p.volume=Math.max(0, Math.min(1, S.volume));
+    if(p.src!==url){ p.src=url; }
+    try{ p.currentTime=0; }catch(e){}
+    p.onended=()=>{ p.onended=null; next(); };
+    p.onerror=()=>{ p.onerror=null; showAudioProblem((s?"'"+s.name+"' ":"")+"파일을 재생할 수 없습니다. (형식 확인)"); setTimeout(next,300); };
+    broadcasting=true; updateBC(s?s.name:"재생 중");
+    const pr=p.play();
+    if(pr && pr.catch){
+      pr.catch(err=>{
+        console.warn("재생 차단", err);
+        noticeAudioLocked();
+        setTimeout(next,300);
+      });
+    }
+  }catch(e){
+    console.warn(e); setTimeout(next,300);
+  }
+}
+/* 재생 문제를 화면에 알립니다 (같은 내용은 연달아 띄우지 않음) */
+let lastProblem="", lastProblemAt=0;
+function showAudioProblem(msg){
+  const now=Date.now();
+  if(msg===lastProblem && now-lastProblemAt<8000) return;
+  lastProblem=msg; lastProblemAt=now;
+  const el=$("#audioErrToast"); if(!el) return;
+  const t=el.querySelector(".txt span"); if(t) t.textContent=msg;
+  showToast("#audioErrToast", 7000);
 }
 
 /* ===== 타이머 ===== */
@@ -1150,9 +1305,17 @@ function maxPeriod(){ let mx=0; editSlots().forEach(s=>{ if(s.type==="class"&&s.
 function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 function downloadJSON(obj,name){ const blob=new Blob([JSON.stringify(obj)],{type:"application/json"}); const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
 function opt(val,label,selected){ return '<option value="'+esc(val)+'"'+(selected===val?" selected":"")+'>'+esc(label)+'</option>'; }
-function soundSelectHTML(selected, def, none){
-  let o=""; if(def) o+=opt("","기본 종소리",selected); o+=opt("beep","기본 벨(삐빅)",selected); if(none) o+=opt("none","없음",selected);
-  S.sounds.forEach(s=> o+=opt(s.id, s.name, selected)); return o;
+function soundSelectHTML(selected, def, none, defId){
+  let o="";
+  if(def){
+    /* "기본 종소리"가 실제로 어떤 파일인지 함께 보여 줍니다 */
+    const dn=(defId!==undefined) ? soundLabel(defId) : "";
+    o+=opt("", dn ? ("기본 종소리 · "+dn) : "기본 종소리", selected);
+  }
+  o+=opt("beep","기본 벨(삐빅)",selected);
+  if(none) o+=opt("none","울리지 않음",selected);
+  S.sounds.forEach(s=> o+=opt(s.id, s.name, selected));
+  return o;
 }
 function mb(bytes){ return bytes? (bytes/1048576).toFixed(1)+"MB" : ""; }
 
@@ -1195,11 +1358,34 @@ function bindSettings(){
   $("#soundInput").onchange=async e=>{
     const files=[...e.target.files];
     if(!idbOK && !warnedIDB){ warnedIDB=true; alert("이 브라우저에서는 음원 영구 저장이 제한됩니다(Chrome·Edge 권장). 지금은 창을 닫기 전까지만 재생됩니다."); }
+    const firstTime=(S.sounds.length===0);
+    const added=[];
     for(const f of files){ const id="s"+Date.now()+Math.floor(Math.random()*9999);
-      try{ if(idbOK) await idbPut(id,f); urlCache[id]=URL.createObjectURL(f); S.sounds.push({id,name:f.name.replace(/\.[^.]+$/,""),size:f.size}); }
+      try{
+        if(idbOK) await idbPut(id,f);
+        urlCache[id]=URL.createObjectURL(f);
+        const rec={id, name:f.name.replace(/\.[^.]+$/,""), size:f.size};
+        S.sounds.push(rec); added.push(rec);
+      }
       catch(err){ alert("파일 저장 오류: "+f.name); }
     }
-    renderBellUI(); renderCues(); saveStore(); e.target.value="";
+    const msg=autoAssignDefaults(added, firstTime);
+    renderBellUI(); renderCues(); renderSlotEditor(); renderWakeUI(); saveStore(); e.target.value="";
+    if(msg){ $("#assignToastMsg").textContent=msg; showToast("#assignToast", 6500); }
+  };
+  $("#autoAssign").onclick=()=>{
+    const msg=autoAssignDefaults(S.sounds.slice(), true, true);
+    renderBellUI(); renderSlotEditor(); renderWakeUI(); saveStore();
+    if(msg){ $("#assignToastMsg").textContent=msg; showToast("#assignToast", 6500); }
+    else alert("이미 모든 기본 종소리가 지정되어 있습니다.\n바꾸려면 아래 목록에서 직접 고르세요.");
+  };
+  $("#audioTest").onclick=()=>{
+    unlockAudio();
+    setTimeout(()=>{
+      if(!audioReady()){ noticeAudioLocked(); return; }
+      playCue([S.bellStartDefault||"beep"]);
+      syncAudioChip();
+    }, 150);
   };
   $("#timerSoundTest").onclick=()=>{ if(S.timerSound==="beep"||!S.timerSound) beepAlarm(); else playCue([S.timerSound]); };
   $("#bellPreTest").onclick=()=>{ unlockAudio(); playCue([S.bellPreDefault||"beep"]); };
@@ -1459,7 +1645,23 @@ function renderBellUI(){
   }
 
   refreshSoundSelects();
+  renderDefSummary();
   measureDurations();
+}
+/* 지금 기본 종소리가 무엇인지 한 줄로 보여 줍니다 */
+function renderDefSummary(){
+  const el=$("#defSummary"); if(!el) return;
+  const rows=[
+    {t:"예비종", v:S.bellPreDefault, c:"pre"},
+    {t:"시작종", v:S.bellStartDefault, c:""},
+    {t:"끝종",   v:S.bellEndDefault, c:""},
+    {t:"타이머", v:S.timerSound, c:""},
+  ];
+  el.innerHTML=rows.map(r=>{
+    const set=(r.v && r.v!=="beep");
+    return '<span class="defchip'+(set?" set":"")+(r.c?" "+r.c:"")+'">'+
+           '<i>'+esc(r.t)+'</i>'+esc(soundLabel(r.v))+'</span>';
+  }).join("");
 }
 
 /* ===== 기상 시간 · 기상송 (기숙사) ===== */
@@ -1531,11 +1733,60 @@ function renderWakeUI(){
 
 /* 음원 목록이 바뀌면 모든 선택 상자를 다시 채웁니다 */
 function refreshSoundSelects(){
-  const ts=$("#timerSoundSel"); if(ts){ ts.innerHTML=soundSelectHTML(S.timerSound,false,false); ts.onchange=e=>{ S.timerSound=e.target.value; saveStore(); }; }
-  const bst=$("#bellStartSel"); if(bst){ bst.innerHTML=soundSelectHTML(S.bellStartDefault,false,false); bst.onchange=e=>{ S.bellStartDefault=e.target.value; renderSlotEditor(); saveStore(); }; }
-  const bendd=$("#bellEndSel"); if(bendd){ bendd.innerHTML=soundSelectHTML(S.bellEndDefault,false,false); bendd.onchange=e=>{ S.bellEndDefault=e.target.value; renderSlotEditor(); saveStore(); }; }
-  const bpre=$("#bellPreSel"); if(bpre){ bpre.innerHTML=soundSelectHTML(S.bellPreDefault,false,false); bpre.onchange=e=>{ S.bellPreDefault=e.target.value; renderSlotEditor(); saveStore(); }; }
+  const ts=$("#timerSoundSel"); if(ts){ ts.innerHTML=soundSelectHTML(S.timerSound,false,false); ts.onchange=e=>{ S.timerSound=e.target.value; renderDefSummary(); saveStore(); }; }
+  const bst=$("#bellStartSel"); if(bst){ bst.innerHTML=soundSelectHTML(S.bellStartDefault,false,false); bst.onchange=e=>{ S.bellStartDefault=e.target.value; renderSlotEditor(); renderDefSummary(); saveStore(); }; }
+  const bendd=$("#bellEndSel"); if(bendd){ bendd.innerHTML=soundSelectHTML(S.bellEndDefault,false,false); bendd.onchange=e=>{ S.bellEndDefault=e.target.value; renderSlotEditor(); renderDefSummary(); saveStore(); }; }
+  const bpre=$("#bellPreSel"); if(bpre){ bpre.innerHTML=soundSelectHTML(S.bellPreDefault,false,false); bpre.onchange=e=>{ S.bellPreDefault=e.target.value; renderSlotEditor(); renderDefSummary(); saveStore(); }; }
 }
+/* ===== 올린 음원을 기본 종소리로 자동 지정 =====
+   파일 이름에 들어 있는 낱말로 알아서 자리를 찾아 줍니다.
+   이미 사람이 골라 둔 자리는 건드리지 않습니다(기본값 "beep"일 때만). */
+const ASSIGN_RULES=[
+  {key:"bellPreDefault",   label:"기본 예비종", words:["예비","준비","프리","prep","pre","warn","ready"]},
+  {key:"bellStartDefault", label:"기본 시작종", words:["시작","시업","입실","수업시작","start","begin","class"]},
+  {key:"bellEndDefault",   label:"기본 끝종",   words:["끝","종료","마침","하교","퇴실","end","finish","over","close"]},
+  {key:"timerSound",       label:"타이머 종료음", words:["타이머","알람","timer","alarm"]},
+];
+const WAKE_WORDS=["기상","아침","모닝","wake","morning","alarm기상"];
+function norm(s){ return String(s||"").toLowerCase().replace(/[\s_\-.]/g,""); }
+
+function autoAssignDefaults(pool, allowOrder, force){
+  if(!pool || !pool.length) return "";
+  const done=[];
+  const used=new Set();
+
+  /* 1) 이름으로 짝 찾기 */
+  ASSIGN_RULES.forEach(r=>{
+    if(!force && S[r.key] && S[r.key]!=="beep") return;      /* 이미 지정됨 */
+    const hit=pool.find(s=>!used.has(s.id) && r.words.some(w=>norm(s.name).includes(norm(w))));
+    if(hit){ S[r.key]=hit.id; used.add(hit.id); done.push(r.label+" ← "+hit.name); }
+  });
+
+  /* 2) 기상송 — 비어 있는 요일에 채워 넣기 */
+  const wakeHit=pool.find(s=>!used.has(s.id) && WAKE_WORDS.some(w=>norm(s.name).includes(norm(w))));
+  if(wakeHit){
+    const empty=[];
+    for(let d=0; d<7; d++){ const w=(S.wake.days||{})[d]; if(w && w.on && !(w.sounds||[]).length) empty.push(d); }
+    if(empty.length){
+      empty.forEach(d=>{ S.wake.days[d].sounds=[wakeHit.id]; });
+      used.add(wakeHit.id);
+      done.push("기상송 ← "+wakeHit.name+" ("+empty.map(d=>WD[d]).join("·")+")");
+    }
+  }
+
+  /* 3) 그래도 빈 자리가 있으면 올린 순서대로 채우기 */
+  if(allowOrder){
+    const rest=pool.filter(s=>!used.has(s.id));
+    ASSIGN_RULES.forEach(r=>{
+      if(S[r.key] && S[r.key]!=="beep") return;
+      const pick=rest.shift();
+      if(pick){ S[r.key]=pick.id; used.add(pick.id); done.push(r.label+" ← "+pick.name); }
+    });
+  }
+
+  return done.join(" · ");
+}
+
 function soundLabel(id){
   if(!id) return "기본 종";
   if(id==="none") return "없음";
@@ -2082,8 +2333,18 @@ function renderSlotEditor(){
     r1.appendChild(sel); r1.appendChild(del);
     card.appendChild(r1);
 
+    /* 쉬는 시간은 종소리를 쓰지 않습니다 — 설정 줄 자체를 감춥니다 */
+    if(s.type==="break"){
+      const note=document.createElement("div"); note.className="slotnote";
+      note.textContent="쉬는 시간은 종소리를 쓰지 않습니다. (앞뒤 칸의 끝종·시작종이 대신 울립니다)";
+      card.appendChild(note);
+      el.appendChild(card);
+      return;
+    }
+
     /* 2줄: 예비종 · 시작종 · 끝종 (종소리 아카이브에서 고르기) */
     const CAP={pre:"예비종", start:"시작종", end:"끝종"};
+    const DEFID={pre:S.bellPreDefault, start:S.bellStartDefault, end:S.bellEndDefault};
     const curOf=(w)=> w==="pre" ? (s.bellPre||"") : (w==="start" ? (s.bellStart||"") : (s.bellEnd||""));
     const setOf=(w,v)=>{ if(w==="pre") s.bellPre=v; else if(w==="start") s.bellStart=v; else s.bellEnd=v; };
 
@@ -2105,7 +2366,11 @@ function renderSlotEditor(){
 
       const sl=document.createElement("select");
       const cur=curOf(which);
-      sl.innerHTML=soundSelectHTML(cur, true, true);
+      /* 수업 칸은 "기본 종소리"가 실제로 무엇인지, 그 밖의 칸은 "지정 안 하면 안 울림"을 알려 줍니다 */
+      const showsDefault=(which==="pre" || s.type==="class");
+      sl.innerHTML = showsDefault
+        ? soundSelectHTML(cur, true, true, DEFID[which])
+        : ('<option value=""'+(cur===""?" selected":"")+'>지정 안 함 (안 울림)</option>'+soundSelectHTML(cur, false, true));
       if(which==="pre" && !s.preMin) sl.disabled=true;
       sl.onchange=()=>{ setOf(which, sl.value); renderSlotEditor(); saveStore(); };
 
@@ -2150,12 +2415,19 @@ async function boot(){
   activity();
   try{ initPWA(); }catch(e){ console.warn("PWA init", e); }
   try{ applyLaunchParams(); }catch(e){}
+
+  /* 자동으로 울릴 것이 있는데 소리가 잠겨 있으면 미리 알려 줍니다
+     (아침에 켜 두고 첫 종을 놓치는 일을 막습니다) */
+  setTimeout(()=>{
+    const scheduled = S.bellAuto || (S.wake && S.wake.on) || S.cues.some(c=>c.on);
+    if(scheduled && !audioReady()) noticeAudioLocked();
+  }, 2500);
 }
 
 /* ==================================================================
    PWA · 오프라인 · 화면 꺼짐 방지 · 전체 백업
    ================================================================== */
-const APP_VERSION="1.5.0";
+const APP_VERSION="1.6.0";
 
 /* ---------- 토스트 ---------- */
 let toastTimer=null;
@@ -2208,6 +2480,15 @@ function initPWA(){
   $("#updateGo").onclick=()=>{ if(waitingSW) waitingSW.postMessage("SKIP_WAITING"); else location.reload(); };
   $("#updateNo").onclick=()=>hideToast("#updateToast");
   $("#readyNo").onclick=()=>hideToast("#readyToast");
+  $("#audioUnlockGo").onclick=()=>{ unlockAudio(); setTimeout(()=>{ hideToast("#audioToast"); beepChime(); syncAudioChip(); }, 120); };
+  $("#audioUnlockNo").onclick=()=>hideToast("#audioToast");
+
+  /* 어떤 클릭·키 입력에서든 소리 잠금을 풀어 둡니다 */
+  ["pointerdown","keydown","touchstart"].forEach(ev=>{
+    document.addEventListener(ev, ()=>{ if(!audioReady()) unlockAudio(); }, {passive:true, capture:true});
+  });
+  /* 창을 다시 보면 컨텍스트가 멈춰 있을 수 있어 되살립니다 */
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ const c=AC; if(c&&c.state==="suspended"){ try{ c.resume().then(syncAudioChip).catch(()=>{}); }catch(e){} } } });
 
   window.addEventListener("beforeinstallprompt", (e)=>{
     e.preventDefault(); deferredPrompt=e; renderAppStat();
@@ -2263,6 +2544,7 @@ function renderAppStat(){
     {t: isStandalone() ? "앱으로 실행 중" : (deferredPrompt ? "설치 가능" : "브라우저에서 실행 중"), c: isStandalone() ? "on" : ""},
     {t: wakeLock ? "화면 유지 중" : "화면 유지 꺼짐", c: wakeLock ? "on" : ""},
     {t: idbOK ? "음원 저장소 정상" : "음원 저장소 제한", c: idbOK ? "on" : "off"},
+    {t: audioReady() ? "소리 준비됨" : "소리 잠김 — 화면 클릭", c: audioReady() ? "on" : "off"},
   ];
   el.innerHTML=items.map(i=>'<span class="chip '+i.c+'">'+esc(i.t)+"</span>").join("");
   const btn=$("#installBtn");
